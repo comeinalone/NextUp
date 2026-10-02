@@ -33,4 +33,4 @@ Thumbs.db
 
 # Misc
 coverage/
-.cache/
+.cache/*.zip
