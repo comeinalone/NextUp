@@ -37,4 +37,14 @@ export const config = {
   // Staff assistance: prompt for help when a token takes this many times
   // the service average
   slowServiceFactor: 2,
+    
+  // Demo simulator (bots and automatic arrivals)
+  sim: {
+    tickMs: 250, // how often bots and arrivals are processed (real milliseconds)
+    pickupMin: 0.25, // simulated minutes for a called customer to reach the counter
+    serviceSpread: [0.6, 1.4], // a bot's service takes the default time x this range
+    noShowRate: 0.05, // chance a called customer doesn't show up
+    priorityRate: 0.08, // chance an arriving customer is a priority customer
+    arrivalWeights: [0.5, 0.3, 0.2], // share of arrivals per service, in service order
+  },
 };
