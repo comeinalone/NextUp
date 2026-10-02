@@ -11,7 +11,7 @@ export const managerRoutes = Router();
 
 const round1 = (n) => (n === null || n === undefined ? null : Math.round(n * 10) / 10);
 const idParam = z.coerce.number().int().positive();
-const assignBody = z.object({ serviceId: z.number().int().positive() });
+const assignBody = z.object({ serviceId: z.coerce.number().int().positive() });
 const applyBody = z.object({ id: z.string().min(1) });
 const simulateQuery = z.object({
   service: z.coerce.number().int().positive(),

@@ -5,13 +5,13 @@ import * as sim from "../sim/simulator.js";
 
 export const simRoutes = Router();
 
-const startBody = z.object({ speed: z.number().min(1).max(120).optional() });
+const startBody = z.object({ speed: z.coerce.number().min(1).max(120).optional() });
 const floodBody = z.object({
-  serviceId: z.number().int().positive(),
-  count: z.number().int().min(1).max(100).optional(),
+  serviceId: z.coerce.number().int().positive(),
+  count: z.coerce.number().int().min(1).max(100).optional(),
 });
-const botsBody = z.object({ counterIds: z.array(z.number().int().positive()).max(20) });
-const arrivalsBody = z.object({ perMin: z.number().min(0).max(30) });
+const botsBody = z.object({ counterIds: z.array(z.coerce.number().int().positive()).max(20) });
+const arrivalsBody = z.object({ perMin: z.coerce.number().min(0).max(30) });
 
 // Every route returns the full manager overview so the dashboard can update.
 simRoutes.post("/sim/start", (req, res) => {

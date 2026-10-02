@@ -8,12 +8,12 @@ export const assistRoutes = Router();
 
 const idParam = z.coerce.number().int().positive();
 const createBody = z.object({
-  counterId: z.number().int().positive(),
+  counterId: z.coerce.number().int().positive(),
   tokenCode: z.string().min(1).max(20).optional(),
   reason: z.enum(assist.REASONS),
   note: z.string().max(200).optional(),
 });
-const acceptBody = z.object({ counterId: z.number().int().positive() });
+const acceptBody = z.object({ counterId: z.coerce.number().int().positive() });
 
 // Every request that is not resolved yet, oldest first (for the manager's list).
 assistRoutes.get("/assist", (req, res) => {
