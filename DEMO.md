@@ -105,7 +105,7 @@ Reset again between run-throughs. Token numbers start at `A-041`, `F-031`, `C-02
 
 **Say:** "The system noticed Certificates has spare counters and Admissions is drowning. It recommends moving Counter 4, and only because the person sitting there has the Admissions skill. It shows before and after, and the total customer-minutes saved. And we checked: when the move is made, the real numbers match this prediction."
 
-**Do (P3):** open the **what-if** panel: show 2, 3 and 4 counters for Admissions.
+**Do (P1, in a terminal):** run `curl "localhost:4000/api/manager/simulate?service=1&counters=3"`, then change `counters` to 2 and 4 to compare.
 
 **Say:** "This is the same engine that produces every customer's wait, so the answers always agree. The manager can test a decision before making it."
 

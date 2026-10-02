@@ -14,7 +14,7 @@ Most queue systems show "you are number 8." NextUp goes further in four ways.
 
 **3. Recommendations with predicted impact.** When one service is overloaded and another has spare counters, the system recommends moving a specific counter, only if the person at that counter has the skill, and shows before and after waits and total customer-minutes saved. We checked the prediction against what actually happens after the move: they match.
 
-**4. What-if simulation.** The manager can ask "what if Admissions had 3 counters?" and get the answer from the same engine that produces customer wait times, before changing anything.
+**4. What-if simulation (API).** The manager can ask "what if Admissions had 3 counters?" and get the answer from the same engine that produces customer wait times, before changing anything.
 
 ## Features
 
@@ -35,7 +35,7 @@ Most queue systems show "you are number 8." NextUp goes further in four ways.
 - Live overview of every service (waiting, open counters, ETA, health: normal, busy, critical) and every counter and staff member
 - Counter-to-service reassignment. A busy counter finishes its current customer first, then switches
 - Counter recommendation with before and after numbers, applied in one click
-- What-if simulator
+- What-if simulation through the API (`GET /api/manager/simulate?service=1&counters=3`)
 - Analytics: served, waiting, no-shows, average wait and service time, queue load over time
 - Audit log in plain English ("A-042 called at Counter 1", "Counter 4 moved from Certificates to Admissions")
 
