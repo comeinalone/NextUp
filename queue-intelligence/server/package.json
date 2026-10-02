@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-  "scripts": { "dev": "nodemon src/index.js" },
+  "scripts": {
+    "dev": "nodemon src/index.js",
+    "seed": "node src/db/seed.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

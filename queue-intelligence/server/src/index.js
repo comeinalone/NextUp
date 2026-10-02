@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { initSchema } from "./db/db.js";
+
+initSchema();
 
 const app = express();
 app.use(cors());
