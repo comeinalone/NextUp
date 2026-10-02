@@ -28,6 +28,7 @@ export const config = {
     etaRatio: 2, // target ETA must be at least 2x the donor's ETA
     donorMinCounters: 2, // never take the last counter from a service
     cooldownMin: 5, // wait this long after a change before recommending again
+    unavailablePenaltyMin: 30, // a waiting person with no open counter counts as this long
   },
 
   // Background recompute so ETAs keep moving even when nobody clicks
