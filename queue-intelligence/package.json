@@ -12,7 +12,8 @@
     "dev": "npx concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "npm --prefix queue-intelligence/server run dev",
     "dev:client": "npm --prefix queue-intelligence/client run dev",
-    "db:seed": "npm --prefix queue-intelligence/server run seed"
+    "db:seed": "npm --prefix queue-intelligence/server run seed",
+    "lint": "oxlint client/src server/src"
   },
   "keywords": [],
   "author": "",

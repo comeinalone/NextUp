@@ -4,7 +4,7 @@ import { mockServices, mockToken } from "./mocks.p2";
 export const USE_MOCKS = import.meta.env.VITE_MOCKS === "1";
 
 // All REST calls live here. Errors always throw ApiError with a human-readable message.
-const PORT = import.meta.env.VITE_API_PORT ?? 5000;
+const PORT = import.meta.env.VITE_API_PORT ?? 4000;
 // hostname (not "localhost") so phones on the LAN reach the laptop
 export const SERVER_URL = `${window.location.protocol}//${window.location.hostname}:${PORT}`;
 const BASE = `${SERVER_URL}/api`;
