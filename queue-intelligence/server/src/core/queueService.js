@@ -179,3 +179,97 @@ export const completeService = tx((counterId) => {
   applyPendingSwitch(counterId);
   return getTokenById(token.id);
 });
+// ---------- skip, hold, recall, cancel ----------
+
+// A skip means the customer didn't show up, so the no-show rate drifts upward.
+function learnFromSkip(serviceId) {
+  const s = db.prepare("SELECT * FROM service_stats WHERE service_id = ?").get(serviceId);
+  const noShow = (1 - config.noShowAlpha) * s.no_show_rate + config.noShowAlpha;
+  db.prepare("UPDATE service_stats SET no_show_rate = ?, updated_at = ? WHERE service_id = ?").run(
+    noShow,
+    clock.nowIso(),
+    serviceId
+  );
+}
+
+// Customer didn't show up after being called.
+export const skipToken = tx((counterId, reason = null) => {
+  const counter = getCounter(counterId);
+  const token = activeToken(counterId);
+  if (!token || token.state !== "CALLED") {
+    throw new ServiceError("NO_CALLED_TOKEN", "Only a called token can be skipped", 409);
+  }
+  db.prepare(
+    "UPDATE tokens SET state = 'SKIPPED', skipped_at = ?, skip_reason = ? WHERE id = ?"
+  ).run(clock.nowIso(), reason, token.id);
+
+  learnFromSkip(token.service_id);
+  setStaffState(counter, "AVAILABLE");
+  logEvent(token.id, "SKIPPED", { counterId, staffId: counter.staff_id, reason });
+  applyPendingSwitch(counterId);
+  return getTokenById(token.id);
+});
+
+// Park a token (for example the customer must fetch a missing document).
+export const holdToken = tx((counterId, reason = null) => {
+  const counter = getCounter(counterId);
+  const token = activeToken(counterId);
+  if (!token) throw new ServiceError("NO_ACTIVE_TOKEN", "No token to hold", 409);
+
+  db.prepare("UPDATE tokens SET state = 'HELD', held_at = ?, hold_reason = ? WHERE id = ?").run(
+    clock.nowIso(),
+    reason,
+    token.id
+  );
+  setStaffState(counter, "AVAILABLE");
+  logEvent(token.id, "HELD", { counterId, staffId: counter.staff_id, reason });
+  applyPendingSwitch(counterId);
+  return getTokenById(token.id);
+});
+
+// Bring a held token back to a free counter of the same service.
+export const recallToken = tx((counterId, tokenId) => {
+  const counter = getCounter(counterId);
+  if (counter.state !== "OPEN") {
+    throw new ServiceError("COUNTER_NOT_OPEN", `Counter is ${counter.state.toLowerCase()}`, 409);
+  }
+  if (activeToken(counterId)) {
+    throw new ServiceError("COUNTER_BUSY", "Finish the current token first", 409);
+  }
+  const token = getTokenById(tokenId);
+  if (!token || token.state !== "HELD") {
+    throw new ServiceError("NOT_HELD", "That token is not on hold", 409);
+  }
+  if (token.service_id !== counter.service_id) {
+    throw new ServiceError("WRONG_SERVICE", "This counter serves a different service", 409);
+  }
+  db.prepare("UPDATE tokens SET state = 'CALLED', counter_id = ?, called_at = ? WHERE id = ?").run(
+    counterId,
+    clock.nowIso(),
+    token.id
+  );
+  logEvent(token.id, "RECALLED", { counterId, staffId: counter.staff_id });
+  return getTokenById(token.id);
+});
+
+// The customer leaves the queue.
+export const cancelToken = tx((code) => {
+  const token = getTokenByCode(code);
+  if (!["WAITING", "HELD", "CALLED"].includes(token.state)) {
+    throw new ServiceError("CANNOT_CANCEL", `A ${token.state.toLowerCase()} token cannot be cancelled`, 409);
+  }
+  const calledAtCounter = token.state === "CALLED" ? token.counter_id : null;
+
+  db.prepare("UPDATE tokens SET state = 'CANCELLED', cancelled_at = ? WHERE id = ?").run(
+    clock.nowIso(),
+    token.id
+  );
+  logEvent(token.id, "CANCELLED", { counterId: calledAtCounter });
+
+  // If they were already called, free that counter.
+  if (calledAtCounter) {
+    setStaffState(getCounter(calledAtCounter), "AVAILABLE");
+    applyPendingSwitch(calledAtCounter);
+  }
+  return getTokenById(token.id);
+});
