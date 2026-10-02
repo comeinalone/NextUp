@@ -1,0 +1,22 @@
+{
+  "name": "queue-intelligence",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client -- --host\"",
+    "lint": "oxlint client/src server/src"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "oxlint": "^1.86.0"
+  }
+}
