@@ -1,4 +1,5 @@
 import { db } from "../db/db.js";
+import { config } from "../config.js";
 import * as clock from "./clock.js";
 import { ServiceError } from "./errors.js";
 import { getWaitingQueue } from "./scheduler.js";
@@ -14,6 +15,14 @@ function logEvent(tokenId, type, { counterId = null, staffId = null, reason = nu
     `INSERT INTO token_events (token_id, type, counter_id, staff_id, reason, at, meta)
      VALUES (?,?,?,?,?,?,?)`
   ).run(tokenId, type, counterId, staffId, reason, clock.nowIso(), meta ? JSON.stringify(meta) : null);
+}
+
+function logSystem(type, payload) {
+  db.prepare("INSERT INTO system_events (type, payload, at) VALUES (?,?,?)").run(
+    type,
+    JSON.stringify(payload),
+    clock.nowIso()
+  );
 }
 
 export function getTokenById(id) {
@@ -41,6 +50,37 @@ export function activeToken(counterId) {
        ORDER BY id DESC LIMIT 1`
     )
     .get(counterId);
+}
+
+function setStaffState(counter, state) {
+  if (counter.staff_id) {
+    db.prepare("UPDATE staff SET state = ? WHERE id = ?").run(state, counter.staff_id);
+  }
+}
+
+// If a counter was told to switch service while busy, do it as soon as it is free.
+export function applyPendingSwitch(counterId) {
+  const c = getCounter(counterId);
+  if (c.state === "SWITCHING" && c.pending_service_id && !activeToken(counterId)) {
+    db.prepare(
+      `UPDATE counters
+       SET service_id = ?, pending_service_id = NULL, state = 'OPEN', state_reason = NULL
+       WHERE id = ?`
+    ).run(c.pending_service_id, counterId);
+    logSystem("COUNTER_SWITCHED", { counterId, from: c.service_id, to: c.pending_service_id });
+  }
+}
+
+// ---------- learning (feeds the ETA engine) ----------
+
+function learnFromCompletion(serviceId, durationMin) {
+  const s = db.prepare("SELECT * FROM service_stats WHERE service_id = ?").get(serviceId);
+  const d = Math.max(durationMin, config.minServiceMin);
+  const ewma = config.ewmaAlpha * d + (1 - config.ewmaAlpha) * s.ewma_min;
+  const noShow = (1 - config.noShowAlpha) * s.no_show_rate; // drifts toward 0
+  db.prepare(
+    "UPDATE service_stats SET ewma_min = ?, no_show_rate = ?, updated_at = ? WHERE service_id = ?"
+  ).run(ewma, noShow, clock.nowIso(), serviceId);
 }
 
 // ---------- customer actions ----------
@@ -97,4 +137,45 @@ export const callNext = tx((counterId) => {
     meta: { score: Math.round(next.score * 10) / 10 },
   });
   return getTokenById(next.id);
+});
+
+export const startService = tx((counterId) => {
+  const counter = getCounter(counterId);
+  const token = activeToken(counterId);
+  if (!token || token.state !== "CALLED") {
+    throw new ServiceError("NO_CALLED_TOKEN", "No called token to start", 409);
+  }
+  db.prepare("UPDATE tokens SET state = 'SERVING', started_at = ? WHERE id = ?").run(
+    clock.nowIso(),
+    token.id
+  );
+  setStaffState(counter, "SERVING");
+  logEvent(token.id, "STARTED", { counterId, staffId: counter.staff_id });
+  return getTokenById(token.id);
+});
+
+export const completeService = tx((counterId) => {
+  const counter = getCounter(counterId);
+  const token = activeToken(counterId);
+  if (!token || token.state !== "SERVING") {
+    throw new ServiceError("NOT_SERVING", "No token is being served", 409);
+  }
+
+  const completedAt = clock.nowIso();
+  db.prepare("UPDATE tokens SET state = 'COMPLETED', completed_at = ? WHERE id = ?").run(
+    completedAt,
+    token.id
+  );
+
+  const durationMin = clock.minutesBetween(token.started_at, completedAt);
+  learnFromCompletion(token.service_id, durationMin);
+
+  setStaffState(counter, "AVAILABLE");
+  logEvent(token.id, "COMPLETED", {
+    counterId,
+    staffId: counter.staff_id,
+    meta: { durationMin: Math.round(durationMin * 100) / 100 },
+  });
+  applyPendingSwitch(counterId);
+  return getTokenById(token.id);
 });
