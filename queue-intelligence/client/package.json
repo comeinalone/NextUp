@@ -10,11 +10,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
+=======
+    "@tailwindcss/vite": "^4.3.3",
+>>>>>>> origin/control
     "lucide-react": "^1.49.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
+<<<<<<< HEAD
     "socket.io-client": "^4.8.4"
+=======
+    "recharts": "^3.10.1",
+    "socket.io-client": "^4.8.4",
+    "tailwindcss": "^4.3.3"
+>>>>>>> origin/control
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
