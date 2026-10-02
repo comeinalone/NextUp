@@ -273,3 +273,72 @@ export const cancelToken = tx((code) => {
   }
   return getTokenById(token.id);
 });
+// ---------- counter states, assignment, checklist ----------
+
+export const setCounterState = tx((counterId, newState, reason = null) => {
+  if (!["OPEN", "BREAK", "CLOSED"].includes(newState)) {
+    throw new ServiceError("BAD_STATE", "State must be OPEN, BREAK or CLOSED", 400);
+  }
+  const counter = getCounter(counterId);
+  if (counter.state === "SWITCHING") {
+    throw new ServiceError("SWITCHING", "Counter is switching service; wait for it to finish", 409);
+  }
+  if (newState !== "OPEN" && activeToken(counterId)) {
+    throw new ServiceError("ACTIVE_TOKEN", "Finish the current token before leaving the counter", 409);
+  }
+
+  db.prepare("UPDATE counters SET state = ?, state_reason = ? WHERE id = ?").run(
+    newState,
+    newState === "OPEN" ? null : reason,
+    counterId
+  );
+  setStaffState(counter, { OPEN: "AVAILABLE", BREAK: "BREAK", CLOSED: "OFFLINE" }[newState]);
+  logSystem("COUNTER_STATE", { counterId, from: counter.state, to: newState, reason });
+  return getCounter(counterId);
+});
+
+// Move a counter to another service. If it is busy, it finishes the current
+// token first (state SWITCHING), then moves by itself.
+export const assignCounter = tx((counterId, serviceId) => {
+  const counter = getCounter(counterId);
+  const svc = db.prepare("SELECT * FROM services WHERE id = ?").get(serviceId);
+  if (!svc) throw new ServiceError("SERVICE_NOT_FOUND", "Service not found", 404);
+  if (counter.state === "SWITCHING") {
+    throw new ServiceError("ALREADY_SWITCHING", "Counter is already switching service", 409);
+  }
+  if (counter.service_id === serviceId) {
+    throw new ServiceError("ALREADY_ASSIGNED", "Counter already serves this service", 409);
+  }
+
+  // The person at the counter must be able to handle the new service.
+  if (counter.staff_id) {
+    const skilled = db
+      .prepare("SELECT 1 FROM staff_skills WHERE staff_id = ? AND service_id = ?")
+      .get(counter.staff_id, serviceId);
+    if (!skilled) {
+      throw new ServiceError("STAFF_LACKS_SKILL", `Staff at this counter cannot handle ${svc.name}`, 409);
+    }
+  }
+
+  if (activeToken(counterId)) {
+    db.prepare("UPDATE counters SET state = 'SWITCHING', pending_service_id = ? WHERE id = ?").run(
+      serviceId,
+      counterId
+    );
+    logSystem("COUNTER_SWITCH_PENDING", { counterId, from: counter.service_id, to: serviceId });
+  } else {
+    db.prepare("UPDATE counters SET service_id = ? WHERE id = ?").run(serviceId, counterId);
+    logSystem("COUNTER_SWITCHED", { counterId, from: counter.service_id, to: serviceId });
+  }
+  return getCounter(counterId);
+});
+
+export const setChecklistItem = tx((tokenId, itemId, done) => {
+  const info = db
+    .prepare("UPDATE token_checklist SET done = ?, done_at = ? WHERE token_id = ? AND item_id = ?")
+    .run(done ? 1 : 0, done ? clock.nowIso() : null, tokenId, itemId);
+  if (info.changes === 0) {
+    throw new ServiceError("CHECKLIST_NOT_FOUND", "Checklist item not found for this token", 404);
+  }
+  return getTokenById(tokenId);
+});
