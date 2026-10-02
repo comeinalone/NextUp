@@ -1,6 +1,6 @@
 // All tunable numbers live here so they can be adjusted in one place.
 export const config = {
-  port: 5000,
+  port: 4000,
 
   // Scheduler: a priority customer is treated as if they had already
   // waited this many extra minutes.
@@ -28,6 +28,7 @@ export const config = {
     etaRatio: 2, // target ETA must be at least 2x the donor's ETA
     donorMinCounters: 2, // never take the last counter from a service
     cooldownMin: 5, // wait this long after a change before recommending again
+    unavailablePenaltyMin: 30, // a waiting person with no open counter counts as this long
   },
 
   // Background recompute so ETAs keep moving even when nobody clicks
@@ -36,4 +37,14 @@ export const config = {
   // Staff assistance: prompt for help when a token takes this many times
   // the service average
   slowServiceFactor: 2,
+    
+  // Demo simulator (bots and automatic arrivals)
+  sim: {
+    tickMs: 250, // how often bots and arrivals are processed (real milliseconds)
+    pickupMin: 0.25, // simulated minutes for a called customer to reach the counter
+    serviceSpread: [0.6, 1.4], // a bot's service takes the default time x this range
+    noShowRate: 0.05, // chance a called customer doesn't show up
+    priorityRate: 0.08, // chance an arriving customer is a priority customer
+    arrivalWeights: [0.5, 0.3, 0.2], // share of arrivals per service, in service order
+  },
 };
