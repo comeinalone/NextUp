@@ -1,9 +1,10 @@
+import { getCounter } from "../core/queueService.js";
 import { tokenSnapshot, serviceSnapshot, counterSnapshot } from "../core/snapshots.js";
 
 let io = null;
 
 // Turn a room name into [event name, function that builds the payload].
-// Rooms we don't build snapshots for yet (manager, display, staff) return null.
+// Rooms we don't build snapshots for (manager, display, staff) return null.
 function resolveRoom(room) {
   const [kind, id] = String(room).split(":");
   if (kind === "token" && id) return ["token:update", () => tokenSnapshot(id)];
@@ -47,4 +48,19 @@ export function emitService(serviceId) {
 
 export function emitCounter(counterId) {
   if (io) send(io.to(`counter:${counterId}`), `counter:${counterId}`);
+}
+
+// Tell the public display a token was just called (it announces it aloud).
+export function emitDisplayCalled(code, counterId) {
+  if (!io) return;
+  try {
+    const counter = getCounter(counterId);
+    io.to("display").emit("display:called", {
+      code,
+      counterId: counter.id,
+      counterName: counter.name,
+    });
+  } catch (e) {
+    console.warn(`[broadcast] display:called skipped: ${e.message}`);
+  }
 }
