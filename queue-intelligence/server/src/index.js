@@ -1,20 +1,16 @@
-import express from "express";
-import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
+import { config } from "./config.js";
 import { initSchema } from "./db/db.js";
+import { createApp } from "./app.js";
 import { initBroadcaster } from "./realtime/broadcaster.js";
+import { startTicker } from "./realtime/recompute.js";
 
 initSchema();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-app.get("/api/health", (req, res) => res.json({ ok: true }));
-
-const httpServer = createServer(app);
+const httpServer = createServer(createApp());
 const io = new Server(httpServer, { cors: { origin: "*" } });
 initBroadcaster(io);
+startTicker();
 
-httpServer.listen(4000, "0.0.0.0", () => console.log("Server on :4000"));
+httpServer.listen(config.port, "0.0.0.0", () => console.log(`Server on :${config.port}`));
