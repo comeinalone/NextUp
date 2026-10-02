@@ -107,7 +107,7 @@ must match these shapes exactly.
       "skills": [1, 2, 3], "servedToday": 12, "avgHandlingMin": 4.1 }
   ],
   "openAssists": 1,
-  "sim": { "running": true, "speed": 5 }
+  "sim": { "running": true, "speed": 5, "bots": [1, 2], "arrivalsPerMin": 4 }
 }
 ```
 
@@ -202,6 +202,8 @@ Base path `/api`. Request bodies are JSON.
 | POST | `/sim/flood` | `{ serviceId, count }` |
 | POST | `/sim/seed` | |
 | POST | `/sim/reset` | |
+| POST | `/sim/bots` | `{ counterIds: [1, 2] }` |
+| POST | `/sim/arrivals` | `{ perMin: 4 }` |
 
 ---
 
