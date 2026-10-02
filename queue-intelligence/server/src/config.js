@@ -1,6 +1,6 @@
 // All tunable numbers live here so they can be adjusted in one place.
 export const config = {
-  port: 4000,
+  port: 5000,
 
   // Scheduler: a priority customer is treated as if they had already
   // waited this many extra minutes.

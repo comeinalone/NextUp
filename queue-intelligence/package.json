@@ -9,8 +9,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w server\" \"npm run dev -w client -- --host\"",
-    "lint": "oxlint client/src server/src"
+    "dev": "npx concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "npm --prefix queue-intelligence/server run dev",
+    "dev:client": "npm --prefix queue-intelligence/client run dev",
+    "db:seed": "npm --prefix queue-intelligence/server run seed"
   },
   "keywords": [],
   "author": "",
