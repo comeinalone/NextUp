@@ -85,3 +85,7 @@ export function emitDisplayCalled(code, counterId) {
     console.warn(`[broadcast] display:called skipped: ${e.message}`);
   }
 }
+// Assistance requests go to the staff screens and the manager dashboard.
+export function emitAssist(event, payload) {
+  if (io) io.to("staff").to("manager").emit(event, payload);
+}
