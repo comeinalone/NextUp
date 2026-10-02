@@ -66,6 +66,12 @@ export function recentEvents(limit = 50) {
         return `${counterName(p.counterId)} will move from ${serviceName(p.from)} to ${serviceName(p.to)} after its current customer`;
       case "COUNTER_SWITCHED":
         return `${counterName(p.counterId)} moved from ${serviceName(p.from)} to ${serviceName(p.to)}`;
+            case "ASSIST_REQUESTED":
+        return `${counterName(p.counterId)} asked for help${p.tokenCode ? ` with ${p.tokenCode}` : ""} (${String(p.reason ?? "OTHER").toLowerCase().replace(/_/g, " ")})`;
+      case "ASSIST_ACCEPTED":
+        return `${counterName(p.helperCounterId)} is helping ${counterName(p.counterId)}`;
+      case "ASSIST_RESOLVED":
+        return `Help request from ${counterName(p.counterId)} resolved`;
       default:
         return r.type;
     }
