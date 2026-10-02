@@ -6,18 +6,24 @@ import { useManagerResource } from './useManagerResource'
 
 function SimulationPanel({ overview, feedback, setFeedback }) {
   const { counters, services, sim } = overview
-  const [speed, setSpeed] = useState(sim.speed)
-  const [selectedBots, setSelectedBots] = useState(sim.bots ?? [])
-  const [arrivalsPerMin, setArrivalsPerMin] = useState(sim.arrivalsPerMin ?? 0)
+  const [speedDraft, setSpeedDraft] = useState(null)
+  const [arrivalDraft, setArrivalDraft] = useState(null)
+  const speed = speedDraft?.base === sim.speed ? speedDraft.value : sim.speed
+  const arrivalsPerMin = arrivalDraft?.base === sim.arrivalsPerMin ? arrivalDraft.value : (sim.arrivalsPerMin ?? 0)
+  const selectedBots = sim.bots ?? []
+  const arrivalsValid = arrivalsPerMin !== '' && Number.isInteger(Number(arrivalsPerMin)) && Number(arrivalsPerMin) >= 0 && Number(arrivalsPerMin) <= 30
   const [serviceId, setServiceId] = useState(services[0]?.serviceId ?? '')
   const [floodCount, setFloodCount] = useState(30)
   const [pendingAction, setPendingAction] = useState(null)
 
   const runAction = async (name, operation, successMessage) => {
+    if (pendingAction) return false
     setPendingAction(name)
     setFeedback({ message: '', error: false })
     try {
       await operation()
+      if (name === 'arrivals' || name === 'reset') setArrivalDraft(null)
+      if (name === 'start' || name === 'reset') setSpeedDraft(null)
       setFeedback({ message: successMessage, error: false })
       return true
     } catch (error) {
@@ -32,23 +38,22 @@ function SimulationPanel({ overview, feedback, setFeedback }) {
     const counterIds = selectedBots.includes(counterId)
       ? selectedBots.filter((id) => id !== counterId)
       : [...selectedBots, counterId]
-    setSelectedBots(counterIds)
-    const updated = await runAction(
+    await runAction(
       'bots',
       () => managerApi.configureBots({ counterIds }),
       counterIds.length ? `${counterIds.length} bot counter${counterIds.length === 1 ? '' : 's'} configured.` : 'Bot counters disabled.',
     )
-    if (!updated) setSelectedBots(sim.bots ?? [])
   }
 
   const selectedService = services.find((service) => service.serviceId === Number(serviceId))
+  const floodValid = floodCount !== '' && Number.isInteger(Number(floodCount)) && Number(floodCount) >= 1 && Number(floodCount) <= 100
   const configuredBotNames = counters.filter((counter) => (sim.bots ?? []).includes(counter.counterId)).map((counter) => counter.name)
 
   return (
     <section className="panel simulation-panel" aria-labelledby="simulation-title">
       <div className="section-heading">
         <div><h2 id="simulation-title">Demo simulation</h2><p>Configure automation, then start the live simulator.</p></div>
-        <StatusBadge state={sim.running ? 'RUNNING' : 'STOPPED'} />
+        <div className="simulation-state" role="status"><StatusBadge state={sim.running ? 'RUNNING' : 'STOPPED'} />{sim.running && <strong>at {sim.speed}× simulated time</strong>}</div>
       </div>
 
       <div className="simulation-summary" aria-label="Current simulation configuration">
@@ -68,22 +73,22 @@ function SimulationPanel({ overview, feedback, setFeedback }) {
               </label>
             ))}
           </div>
-          <small>Select none to keep every counter manual.</small>
+          <small>Selected counters operate automatically while running. All others remain manual.</small>
         </fieldset>
 
         <div className="simulation-group">
-          <label htmlFor="automatic-arrivals">Automatic arrivals</label>
+          <label htmlFor="automatic-arrivals">Automatic arrivals / min</label>
           <div className="inline-control">
-            <input id="automatic-arrivals" type="number" min="0" max="30" value={arrivalsPerMin} onChange={(event) => setArrivalsPerMin(Math.min(30, Math.max(0, Number(event.target.value))))} />
-            <button className="secondary-button compact" type="button" onClick={() => runAction('arrivals', () => managerApi.configureArrivals({ perMin: arrivalsPerMin }), arrivalsPerMin ? `Automatic arrivals set to ${arrivalsPerMin}/min.` : 'Automatic arrivals disabled.')} disabled={pendingAction !== null || arrivalsPerMin === sim.arrivalsPerMin}>{pendingAction === 'arrivals' ? 'Setting…' : 'Set'}</button>
+            <input id="automatic-arrivals" type="number" min="0" max="30" step="1" value={arrivalsPerMin} disabled={pendingAction !== null} onChange={(event) => setArrivalDraft({ base: sim.arrivalsPerMin, value: event.target.value })} />
+            <button className="secondary-button compact" type="button" onClick={() => runAction('arrivals', () => managerApi.configureArrivals({ perMin: Number(arrivalsPerMin) }), Number(arrivalsPerMin) ? `Automatic arrivals set to ${arrivalsPerMin}/min.` : 'Automatic arrivals disabled.')} disabled={pendingAction !== null || !arrivalsValid || Number(arrivalsPerMin) === sim.arrivalsPerMin}>{pendingAction === 'arrivals' ? 'Setting…' : 'Set'}</button>
           </div>
           <small>0 means Off. Runs only while started.</small>
         </div>
 
         <div className="simulation-group">
           <label htmlFor="simulation-speed">Speed</label>
-          <select id="simulation-speed" value={speed} onChange={(event) => setSpeed(Number(event.target.value))} disabled={pendingAction !== null}>
-            {[1, 5, 10].map((value) => <option key={value} value={value}>{value}× realtime</option>)}
+          <select id="simulation-speed" value={speed} onChange={(event) => setSpeedDraft({ base: sim.speed, value: Number(event.target.value) })} disabled={sim.running || pendingAction !== null}>
+            {[...new Set([1, 5, 10, sim.speed])].map((value) => <option key={value} value={value}>{value}× realtime</option>)}
           </select>
           <small>Applied when the simulation starts.</small>
         </div>
@@ -91,8 +96,8 @@ function SimulationPanel({ overview, feedback, setFeedback }) {
         <div className="simulation-group run-group">
           <span className="control-label">Run state</span>
           <div className="button-row">
-            <button className="primary-button compact" type="button" onClick={() => runAction('start', () => managerApi.startSimulation({ speed }), `Simulation started at ${speed}× speed.`)} disabled={sim.running || pendingAction !== null}><Play size={14} />{pendingAction === 'start' ? 'Starting…' : 'Start'}</button>
-            <button className="secondary-button compact" type="button" onClick={() => runAction('stop', managerApi.stopSimulation, 'Simulation stopped. Automated activity is paused.')} disabled={!sim.running || pendingAction !== null}><Square size={13} />{pendingAction === 'stop' ? 'Stopping…' : 'Stop'}</button>
+            <button className={`${sim.running ? 'secondary' : 'primary'}-button compact`} type="button" onClick={() => runAction('start', () => managerApi.startSimulation({ speed }), `Simulation started at ${speed}× speed.`)} disabled={sim.running || pendingAction !== null}><Play size={14} />{pendingAction === 'start' ? 'Starting…' : 'Start'}</button>
+            <button className={`${sim.running ? 'primary' : 'secondary'}-button compact`} type="button" onClick={() => runAction('stop', managerApi.stopSimulation, 'Simulation stopped. Automated activity is paused.')} disabled={!sim.running || pendingAction !== null}><Square size={13} />{pendingAction === 'stop' ? 'Stopping…' : 'Stop'}</button>
           </div>
         </div>
 
@@ -102,8 +107,8 @@ function SimulationPanel({ overview, feedback, setFeedback }) {
             <select id="flood-service" value={serviceId} onChange={(event) => setServiceId(Number(event.target.value))} disabled={pendingAction !== null}>
               {services.map((service) => <option key={service.serviceId} value={service.serviceId}>{service.name}</option>)}
             </select>
-            <input aria-label="Flood arrival count" type="number" min="1" max="100" value={floodCount} onChange={(event) => setFloodCount(Math.min(100, Math.max(1, Number(event.target.value))))} disabled={pendingAction !== null} />
-            <button className="secondary-button compact" type="button" onClick={() => runAction('flood', () => managerApi.floodService({ serviceId: Number(serviceId), count: floodCount }), `Added ${floodCount} arrivals to ${selectedService?.name ?? 'the selected service'}.`)} disabled={pendingAction !== null || !serviceId}><Waves size={14} />{pendingAction === 'flood' ? 'Adding…' : `Flood ${selectedService?.name ?? 'service'}`}</button>
+            <input aria-label="Flood arrival count" type="number" min="1" max="100" step="1" value={floodCount} onChange={(event) => setFloodCount(event.target.value)} disabled={pendingAction !== null} />
+            <button className="secondary-button compact" type="button" onClick={() => runAction('flood', () => managerApi.floodService({ serviceId: Number(serviceId), count: Number(floodCount) }), `Added ${floodCount} arrivals to ${selectedService?.name ?? 'the selected service'}.`)} disabled={pendingAction !== null || !serviceId || !floodValid}><Waves size={14} />{pendingAction === 'flood' ? 'Adding…' : `Flood ${selectedService?.name ?? 'service'}`}</button>
           </div>
         </div>
 
@@ -124,7 +129,5 @@ export default function SimulationControls() {
   if (loading && !overview) return <section className="panel simulation-panel"><ResourceState loading title="Loading simulation" message="Getting the current simulator configuration." /></section>
   if (error || !overview) return <section className="panel simulation-panel"><ResourceState title="Simulation unavailable" message="The simulation controls could not be loaded." action={reload} /></section>
 
-  const sim = overview.sim
-  const configurationKey = `${sim.speed}-${(sim.bots ?? []).join(',')}-${sim.arrivalsPerMin ?? 0}`
-  return <SimulationPanel key={configurationKey} overview={overview} feedback={feedback} setFeedback={setFeedback} />
+  return <SimulationPanel overview={overview} feedback={feedback} setFeedback={setFeedback} />
 }

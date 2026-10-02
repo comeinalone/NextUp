@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowRight, Info, Lightbulb, MoveRight, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Info, Lightbulb, TriangleAlert } from 'lucide-react'
 import { managerApi } from '../../lib/managerApi'
 import { ResourceState } from './components'
 import { minutes } from './format'
@@ -10,7 +10,7 @@ function ImpactRow({ label, before, after, emphasis = false }) {
   return (
     <div className={`impact-row${emphasis ? ' impact-target' : ''}`}>
       <div><span className="impact-label">{label}</span>{emphasis && <span className="target-label">Overloaded</span>}</div>
-      <span className="impact-before">{eta(before.etaMin)}</span>
+      <span className={`impact-before${before.etaMin == null ? ' unavailable' : ''}`}>{eta(before.etaMin)}</span>
       <ArrowRight size={15} aria-hidden="true" />
       <strong>{eta(after.etaMin)}</strong>
     </div>
@@ -28,8 +28,8 @@ export default function RecommendationCard() {
       await managerApi.applyRecommendation({ id: recommendation.id })
     } catch (error) {
       if (error?.code === 'RECOMMENDATION_STALE') {
-        setFeedback('Queue conditions changed. Recommendation refreshed.')
-        await reload()
+        const refreshed = await reload()
+        setFeedback(refreshed ? 'Queue conditions changed. Recommendation refreshed.' : 'Queue conditions changed. Could not refresh; please retry.')
       } else {
         setFeedback(error?.message ?? 'Could not apply this recommendation.')
       }
@@ -56,9 +56,7 @@ export default function RecommendationCard() {
         <div className="recommendation-summary">
           <div className="target-service"><TriangleAlert size={16} /><span><small>Overloaded service</small><strong>{recommendation.toServiceName}</strong></span></div>
           <div className="move-summary">
-            <span><small>Move</small><strong>{recommendation.counterName}</strong></span>
-            <MoveRight size={21} />
-            <span><small>From → to</small><strong>{recommendation.fromServiceName} → {recommendation.toServiceName}</strong></span>
+            <span><strong>Move {recommendation.counterName}</strong><small>{recommendation.fromServiceName} → {recommendation.toServiceName}</small></span>
           </div>
         </div>
 
@@ -79,7 +77,7 @@ export default function RecommendationCard() {
         </div>
       </div>
 
-      <div className="assumptions"><Info size={14} /><span><strong>Assumptions:</strong> {recommendation.assumptions}</span></div>
+      <div className="assumptions"><Info size={14} /><span><strong>Assumptions:</strong> {recommendation.assumptions?.replace(/^Based on (?:the current queue with no new arrivals, using today's average service times|current queue, no new arrivals, average service times from today)\./, "Estimate based on the current queue and today's average service times; future arrivals are excluded.")}</span></div>
     </section>
   )
 }

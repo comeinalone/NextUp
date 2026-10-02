@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Activity, ArrowUpRight, BarChart3, LayoutDashboard, Users, PanelTop, FlaskConical } from 'lucide-react'
+import { Activity, ArrowUpRight, BarChart3, LayoutDashboard, Users, PanelTop } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import './manager.css'
 
@@ -23,9 +23,9 @@ export default function ManagerLayout() {
         <div className="sidebar-bottom"><PanelTop size={19} /><div><strong>Control room</strong><span>Manager workspace</span></div><span className="small-dot" /></div>
       </aside>
       <div className="workspace">
-        <header className="topbar"><span><Activity size={16} />Service operations <span className="breadcrumb">/ Control room</span></span><span className="mock-label"><FlaskConical size={14} />Live operations · Mock analytics</span></header>
+        <header className="topbar"><span><Activity size={16} />Service operations <span className="breadcrumb">/ Control room</span></span><span className="live-label"><Activity size={14} />Live operations</span></header>
         <main id="manager-content" tabIndex={-1}><Outlet /></main>
-        <footer>NextUp <span>Queue intelligence, at a glance.</span><span>Phase 3 · Live operations</span></footer>
+        <footer>NextUp <span>Queue intelligence, at a glance.</span><span>Control room · Live operations</span></footer>
       </div>
     </div>
   )

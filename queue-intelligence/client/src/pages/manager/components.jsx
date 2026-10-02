@@ -15,3 +15,8 @@ export function ResourceState({ title, message, action, loading = false }) {
     {action && <button className="secondary-button compact" type="button" onClick={action}>Try again</button>}
   </div>
 }
+
+export function RefreshNotice({ data, error, reload, loading }) {
+  if (!error || data === null) return null
+  return <div className="refresh-notice" role="status"><span>Could not refresh. Showing the last available data.</span><button className="text-button" type="button" onClick={reload} disabled={loading}>{loading ? 'Retrying…' : 'Retry'}</button></div>
+}

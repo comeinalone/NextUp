@@ -1,8 +1,6 @@
-import { analyticsTimeline, analyticsToday } from './mocks.js'
 import { io } from 'socket.io-client'
 
-// P3's single data boundary. Analytics remains mock-backed until its backend is ready.
-const clone = (value) => structuredClone(value)
+// REST responses and socket snapshots share one manager data boundary.
 
 export class ManagerApiError extends Error {
   constructor(message, { code = 'REQUEST_FAILED', status = 0 } = {}) {
@@ -65,25 +63,80 @@ const realProvider = {
   resetSimulation: () => request('/api/sim/reset', { method: 'POST' }),
 }
 
-const mockProvider = {
-  getAnalyticsToday: async () => clone(analyticsToday),
-  getAnalyticsTimeline: async () => clone(analyticsTimeline),
-}
-
 let managerSocket = null
 let currentOverview = null
+let overviewRevision = 0
+let overviewRequest = null
+let currentRecommendation = null
+let recommendationRevision = 0
+let recommendationRequest = null
+let currentAssists = []
+let assistRevision = 0
+let assistRequest = null
 const overviewSubscribers = new Set()
 const recommendationSubscribers = new Set()
+const assistSubscribers = new Set()
 
 function publishOverview(overview) {
   currentOverview = overview
+  overviewRevision += 1
   for (const subscriber of overviewSubscribers) subscriber(overview)
   return overview
 }
 
 function publishRecommendation(recommendation) {
+  currentRecommendation = recommendation
+  recommendationRevision += 1
   for (const subscriber of recommendationSubscribers) subscriber(recommendation)
   return recommendation
+}
+
+function getRecommendation() {
+  if (!recommendationRequest) {
+    const revision = recommendationRevision
+    recommendationRequest = realProvider.getRecommendation().then((recommendation) => {
+      return revision === recommendationRevision ? publishRecommendation(recommendation) : currentRecommendation
+    }).finally(() => { recommendationRequest = null })
+  }
+  return recommendationRequest
+}
+
+function publishAssists(requests) {
+  currentAssists = requests.filter((item) => item.state !== 'RESOLVED')
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id - b.id)
+  assistRevision += 1
+  for (const subscriber of assistSubscribers) subscriber(currentAssists)
+  return currentAssists
+}
+
+function publishAssist(request) {
+  publishAssists([...currentAssists.filter((item) => item.id !== request.id), request])
+  return request
+}
+
+function getAssists() {
+  if (!assistRequest) {
+    const revision = assistRevision
+    assistRequest = request('/api/assist').then((requests) => {
+      // A newer socket event wins over an earlier HTTP snapshot.
+      return revision === assistRevision ? publishAssists(requests) : currentAssists
+    }).finally(() => { assistRequest = null })
+  }
+  return assistRequest
+}
+
+function getOverview() {
+  if (!overviewRequest) {
+    const revision = overviewRevision
+    overviewRequest = realProvider.getOverview().then((overview) => {
+      return revision === overviewRevision ? publishOverview(overview) : currentOverview
+    }).finally(() => { overviewRequest = null })
+  }
+  return overviewRequest
+}
+
+function releaseManagerSocket() {
+  if (!overviewSubscribers.size && !recommendationSubscribers.size && !assistSubscribers.size) stopManagerSocket()
 }
 
 function stopManagerSocket() {
@@ -97,9 +150,15 @@ function ensureManagerSocket() {
   if (managerSocket) return managerSocket
 
   const socket = io({ autoConnect: false })
-  socket.on('connect', () => socket.emit('join', 'manager'))
+  socket.on('connect', () => {
+    socket.emit('join', 'manager')
+    // Assistance is recovered by REST because room join only sends overview/recommendation.
+    if (assistSubscribers.size) getAssists().catch(() => {})
+  })
   socket.on('manager:overview', publishOverview)
   socket.on('manager:recommendation', publishRecommendation)
+  socket.on('assist:new', publishAssist)
+  socket.on('assist:update', publishAssist)
   managerSocket = socket
   socket.connect()
   return socket
@@ -110,7 +169,7 @@ function subscribeOverview(subscriber) {
   ensureManagerSocket()
   return () => {
     overviewSubscribers.delete(subscriber)
-    if (overviewSubscribers.size === 0 && recommendationSubscribers.size === 0) stopManagerSocket()
+    releaseManagerSocket()
   }
 }
 
@@ -119,7 +178,16 @@ function subscribeRecommendation(subscriber) {
   ensureManagerSocket()
   return () => {
     recommendationSubscribers.delete(subscriber)
-    if (overviewSubscribers.size === 0 && recommendationSubscribers.size === 0) stopManagerSocket()
+    releaseManagerSocket()
+  }
+}
+
+function subscribeAssists(subscriber) {
+  assistSubscribers.add(subscriber)
+  ensureManagerSocket()
+  return () => {
+    assistSubscribers.delete(subscriber)
+    releaseManagerSocket()
   }
 }
 
@@ -128,11 +196,11 @@ async function publishOverviewResult(operation) {
 }
 
 export const managerApi = {
-  getOverview: () => currentOverview ? Promise.resolve(currentOverview) : publishOverviewResult(realProvider.getOverview()),
-  getStaffOverview: () => currentOverview ? Promise.resolve(currentOverview) : publishOverviewResult(realProvider.getOverview()),
+  getOverview,
+  getStaffOverview: getOverview,
   assignCounter: (input) => publishOverviewResult(realProvider.assignCounter(input)),
   subscribeOverview,
-  getRecommendation: async () => publishRecommendation(await realProvider.getRecommendation()),
+  getRecommendation,
   applyRecommendation: async (input) => {
     const overview = await publishOverviewResult(realProvider.applyRecommendation(input))
     publishRecommendation(null)
@@ -145,8 +213,15 @@ export const managerApi = {
   configureBots: (input) => publishOverviewResult(realProvider.configureBots(input)),
   configureArrivals: (input) => publishOverviewResult(realProvider.configureArrivals(input)),
   resetSimulation: () => publishOverviewResult(realProvider.resetSimulation()),
-  getAnalyticsToday: () => mockProvider.getAnalyticsToday(),
-  getAnalyticsTimeline: () => mockProvider.getAnalyticsTimeline(),
+  getAnalyticsToday: () => request('/api/analytics/today'),
+  getAnalyticsTimeline: () => request('/api/analytics/timeline?minutes=120&step=5'),
+  getEvents: () => request('/api/events?limit=50'),
+  getAssists,
+  subscribeAssists,
+  acceptAssist: async ({ id, counterId }) => publishAssist(await request(`/api/assist/${id}/accept`, {
+    method: 'POST', body: JSON.stringify({ counterId }),
+  })),
+  resolveAssist: async ({ id }) => publishAssist(await request(`/api/assist/${id}/resolve`, { method: 'POST' })),
 }
 
 const assignmentErrorMessages = {

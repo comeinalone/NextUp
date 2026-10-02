@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Users, Monitor, UserCheck, ArrowRight, Info, Layers } from 'lucide-react'
+import { Users, Monitor, UserCheck, Info, Layers } from 'lucide-react'
 import { assignmentErrorMessage, managerApi } from '../../lib/managerApi'
 import { Metric, PageHeading, ResourceState, StatusBadge } from './components'
 import { serviceClass, minutes } from './format'
 import RecommendationCard from './RecommendationCard'
 import SimulationControls from './SimulationControls'
+import StaffAssistance from './StaffAssistance'
 import { useManagerResource } from './useManagerResource'
 
 function CounterCard({ counter, services, staff, onAssigned }) {
@@ -62,26 +63,28 @@ function CounterCard({ counter, services, staff, onAssigned }) {
 }
 
 export default function ManagerOverview() {
-  const { data: overview, error, loading, reload, replaceData } = useManagerResource(managerApi.getOverview, managerApi.subscribeOverview)
+  const { data: overview, error, loading, reload } = useManagerResource(managerApi.getOverview, managerApi.subscribeOverview)
   const [assignmentNotice, setAssignmentNotice] = useState(null)
   if (loading && !overview) return <ResourceState loading title="Loading control room" message="Getting the latest manager snapshot." />
   if (error || !overview) return <ResourceState title="Control room unavailable" message="The manager overview could not be loaded." action={reload} />
 
   const { services, counters, staff } = overview
   const waiting = services.reduce((sum, service) => sum + service.waiting, 0)
-  const open = counters.filter((counter) => counter.state === 'OPEN').length
+  const activeCounters = counters.filter((counter) => counter.state === 'OPEN' || counter.state === 'SWITCHING')
+  const automated = activeCounters.filter((counter) => overview.sim.bots?.includes(counter.counterId)).length
   return (
     <>
       <PageHeading eyebrow="YOUR OPERATIONS, TOGETHER" title="Service overview" description="A clear view of your queues, counters, and people."><span className="snapshot-chip"><span />Live snapshot</span></PageHeading>
       <section className="metrics" aria-label="Operations summary">
         <Metric icon={Users} label="Customers waiting" value={waiting} detail={`Across ${services.length} services`} />
-        <Metric icon={Monitor} label="Open counters" value={<>{open}<small> / {counters.length}</small></>} detail={`${counters.length - open} counter on break`} />
+        <Metric icon={Monitor} label="Active counters" value={<>{activeCounters.length}<small> / {counters.length}</small></>} detail={`${automated} automated · ${activeCounters.length - automated} manual`} />
         <Metric icon={UserCheck} label="Staff available" value={staff.filter((person) => person.state === 'AVAILABLE').length} detail={`${staff.filter((person) => person.state === 'SERVING').length} currently serving`} />
       </section>
       <div className="intelligence-grid">
         <RecommendationCard />
         <SimulationControls />
       </div>
+      <StaffAssistance counters={counters} openAssists={overview.openAssists} />
       <section className="panel service-panel" aria-labelledby="services-title">
         <div className="section-heading"><div><h2 id="services-title">Service queues</h2><p>Current load and estimated wait by service.</p></div><span className="count-label">{services.length} services</span></div>
         <div className="table-scroll"><table className="service-table"><thead><tr><th scope="col">Service</th><th scope="col">Waiting</th><th scope="col">Open counters</th><th scope="col">Estimated wait</th><th scope="col">Health</th></tr></thead><tbody>
@@ -91,9 +94,8 @@ export default function ManagerOverview() {
       </section>
       <section aria-labelledby="counters-title"><div className="section-heading counter-section-heading"><div><h2 id="counters-title">Counter floor</h2><p>Staff assignments and the customer at each counter.</p></div><span className="count-label"><Layers size={14} />{counters.length} counters</span></div>
         {assignmentNotice && <div className="assignment-banner" role="status"><Info size={15} />{assignmentNotice}<button type="button" onClick={() => setAssignmentNotice(null)} aria-label="Dismiss assignment message">Dismiss</button></div>}
-        <div className="counter-grid">{counters.map((counter) => <CounterCard key={`${counter.counterId}-${counter.serviceId}-${counter.pendingServiceId ?? 'none'}`} counter={counter} services={services} staff={staff} onAssigned={(updatedOverview, message) => { replaceData(updatedOverview); setAssignmentNotice(message) }} />)}</div>
+        <div className="counter-grid">{counters.map((counter) => <CounterCard key={`${counter.counterId}-${counter.serviceId}-${counter.pendingServiceId ?? 'none'}`} counter={counter} services={services} staff={staff} onAssigned={(updatedOverview, message) => { setAssignmentNotice(message) }} />)}</div>
       </section>
-      <div className="mock-notice"><Info size={17} /><span><strong>Live operations are connected.</strong> Queue controls and recommendations use the live server; analytics still uses sample data.</span><ArrowRight size={18} /></div>
     </>
   )
 }
