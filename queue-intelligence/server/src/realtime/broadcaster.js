@@ -1,6 +1,7 @@
 import { getCounter } from "../core/queueService.js";
 import { tokenSnapshot, serviceSnapshot, counterSnapshot } from "../core/snapshots.js";
 import { managerSnapshot } from "../core/managerSnapshot.js";
+import { computeRecommendation } from "../core/allocationEngine.js";
 
 let io = null;
 
@@ -27,6 +28,15 @@ function send(target, room) {
   }
 }
 
+// The current counter recommendation, or null when there is nothing to do.
+function sendRecommendation(target) {
+  try {
+    target.emit("manager:recommendation", computeRecommendation());
+  } catch (e) {
+    console.warn(`[broadcast] recommendation skipped: ${e.message}`);
+  }
+}
+
 // Call once at startup with the Socket.IO server.
 export function initBroadcaster(server) {
   io = server;
@@ -35,6 +45,7 @@ export function initBroadcaster(server) {
       if (typeof room !== "string") return;
       socket.join(room);
       send(socket, room); // the newcomer gets the current state immediately
+      if (room === "manager") sendRecommendation(socket);
     });
   });
 }
@@ -52,9 +63,12 @@ export function emitCounter(counterId) {
   if (io) send(io.to(`counter:${counterId}`), `counter:${counterId}`);
 }
 
-// Push a fresh overview to the manager dashboard.
+// Push a fresh overview and recommendation to the manager dashboard.
+// Skipped when nobody is watching, so the 5-second tick stays cheap.
 export function emitManager() {
-  if (io) send(io.to("manager"), "manager");
+  if (!io || !io.sockets.adapter.rooms.has("manager")) return;
+  send(io.to("manager"), "manager");
+  sendRecommendation(io.to("manager"));
 }
 
 // Tell the public display a token was just called (it announces it aloud).
