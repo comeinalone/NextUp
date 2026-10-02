@@ -3,17 +3,19 @@ import { seedDatabase } from "../db/seed.js";
 import * as clock from "../core/clock.js";
 import { ServiceError } from "../core/errors.js";
 import { createToken } from "../core/queueService.js";
-import { setRunning } from "../core/simState.js";
+import { setRunning, setBots, setArrivalsPerMin, clearSimState } from "../core/simState.js";
 import { refresh, refreshAll } from "../realtime/recompute.js";
+import { resetSimRuntime } from "./bots.js";
 
 // Demo mode: speed the clock up so a 4-minute service takes seconds.
+// Bots and automatic arrivals only act while this is running.
 export function startSim(speed) {
   clock.setSpeed(speed);
   setRunning(true);
   refresh(); // tells the manager dashboard
 }
 
-// Back to normal speed. Time does not rewind.
+// Back to normal speed. Time does not rewind. Bots and arrivals pause.
 export function stopSim() {
   clock.setSpeed(1);
   setRunning(false);
@@ -28,15 +30,35 @@ export function flood(serviceId, count) {
   refresh({ services: [serviceId] });
 }
 
-// Reload the starting data. The clock and the simulator are left as they are.
+// Choose which counters are operated automatically (an empty list means none).
+export function setBotCounters(counterIds) {
+  const unique = [...new Set(counterIds)];
+  for (const id of unique) {
+    if (!db.prepare("SELECT 1 FROM counters WHERE id = ?").get(id)) {
+      throw new ServiceError("COUNTER_NOT_FOUND", `Counter ${id} not found`, 404);
+    }
+  }
+  setBots(unique);
+  refresh();
+}
+
+// Customers per simulated minute arriving on their own (0 turns it off).
+export function setArrivals(perMin) {
+  setArrivalsPerMin(perMin);
+  refresh();
+}
+
+// Reload the starting data. The clock, bots and arrival rate are kept.
 export function reseed() {
+  resetSimRuntime();
   seedDatabase();
   refreshAll();
 }
 
-// Reload the data, turn the simulator off and put the clock back on real time.
+// Reload the data, turn everything off and put the clock back on real time.
 export function resetAll() {
-  setRunning(false);
+  clearSimState();
+  resetSimRuntime();
   clock.resyncToRealTime();
   seedDatabase();
   refreshAll();

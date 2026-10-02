@@ -2,7 +2,7 @@ import { db } from "../db/db.js";
 import * as clock from "./clock.js";
 import { activeToken } from "./queueService.js";
 import { allServiceSnapshots } from "./snapshots.js";
-import { isRunning } from "./simState.js";
+import { isRunning, getBots, getArrivalsPerMin } from "./simState.js";
 
 const round1 = (n) => (n === null || n === undefined ? null : Math.round(n * 10) / 10);
 
@@ -74,6 +74,11 @@ export function managerSnapshot() {
     counters,
     staff,
     openAssists,
-    sim: { running: isRunning(), speed: clock.getSpeed() },
+    sim: {
+      running: isRunning(),
+      speed: clock.getSpeed(),
+      bots: getBots(),
+      arrivalsPerMin: getArrivalsPerMin(),
+    },
   };
 }
