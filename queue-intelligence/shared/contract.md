@@ -107,7 +107,7 @@ must match these shapes exactly.
       "skills": [1, 2, 3], "servedToday": 12, "avgHandlingMin": 4.1 }
   ],
   "openAssists": 1,
-  "sim": { "running": true, "speed": 5 }
+  "sim": { "running": true, "speed": 5, "bots": [1, 2], "arrivalsPerMin": 4 }
 }
 ```
 
@@ -156,6 +156,9 @@ States: `OPEN | ACCEPTED | RESOLVED`.
 ## REST endpoints
 
 Base path `/api`. Request bodies are JSON.
+| GET | `/analytics/today` | | `{ issued, completed, waiting, noShows, avgWaitMin, avgServiceMin, perService: [{ serviceId, name, issued, completed, waiting, noShows, avgWaitMin, avgServiceMin }] }` (averages are null with no data) |
+| GET | `/analytics/timeline` | `?minutes=120&step=5` (both optional) | `[{ time, waiting }]` oldest first, last point is now |
+
 
 ### Customer
 | Method | Path | Body | Returns |
@@ -202,6 +205,8 @@ Base path `/api`. Request bodies are JSON.
 | POST | `/sim/flood` | `{ serviceId, count }` |
 | POST | `/sim/seed` | |
 | POST | `/sim/reset` | |
+| POST | `/sim/bots` | `{ counterIds: [1, 2] }` |
+| POST | `/sim/arrivals` | `{ perMin: 4 }` |
 
 ---
 
