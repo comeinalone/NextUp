@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
 
 html { font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
 body { @apply bg-paper text-ink antialiased; letter-spacing: 0; }
