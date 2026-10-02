@@ -4,6 +4,7 @@ import * as qs from "../core/queueService.js";
 import { ServiceError } from "../core/errors.js";
 import { counterSnapshot } from "../core/snapshots.js";
 import { refresh } from "../realtime/recompute.js";
+import { emitDisplayCalled } from "../realtime/broadcaster.js";
 
 export const counterRoutes = Router();
 
@@ -36,6 +37,7 @@ counterRoutes.post("/counters/:id/call-next", (req, res) => {
   const before = qs.getCounter(id).service_id;
   const token = qs.callNext(id);
   push(id, before, [token.code]);
+  emitDisplayCalled(token.code, id);
   res.json(counterSnapshot(id));
 });
 
@@ -82,6 +84,7 @@ counterRoutes.post("/counters/:id/recall/:tokenId", (req, res) => {
   const before = qs.getCounter(id).service_id;
   const token = qs.recallToken(id, tokenId);
   push(id, before, [token.code]);
+  emitDisplayCalled(token.code, id);
   res.json(counterSnapshot(id));
 });
 

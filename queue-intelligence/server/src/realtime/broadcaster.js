@@ -1,11 +1,14 @@
+import { getCounter } from "../core/queueService.js";
 import { tokenSnapshot, serviceSnapshot, counterSnapshot } from "../core/snapshots.js";
+import { managerSnapshot } from "../core/managerSnapshot.js";
 
 let io = null;
 
 // Turn a room name into [event name, function that builds the payload].
-// Rooms we don't build snapshots for yet (manager, display, staff) return null.
+// Rooms we don't build snapshots for (display, staff) return null.
 function resolveRoom(room) {
   const [kind, id] = String(room).split(":");
+  if (kind === "manager" && id === undefined) return ["manager:overview", () => managerSnapshot()];
   if (kind === "token" && id) return ["token:update", () => tokenSnapshot(id)];
   if (kind === "service" && id) return ["service:update", () => serviceSnapshot(Number(id))];
   if (kind === "counter" && id) return ["counter:update", () => counterSnapshot(Number(id))];
@@ -47,4 +50,24 @@ export function emitService(serviceId) {
 
 export function emitCounter(counterId) {
   if (io) send(io.to(`counter:${counterId}`), `counter:${counterId}`);
+}
+
+// Push a fresh overview to the manager dashboard.
+export function emitManager() {
+  if (io) send(io.to("manager"), "manager");
+}
+
+// Tell the public display a token was just called (it announces it aloud).
+export function emitDisplayCalled(code, counterId) {
+  if (!io) return;
+  try {
+    const counter = getCounter(counterId);
+    io.to("display").emit("display:called", {
+      code,
+      counterId: counter.id,
+      counterName: counter.name,
+    });
+  } catch (e) {
+    console.warn(`[broadcast] display:called skipped: ${e.message}`);
+  }
 }
