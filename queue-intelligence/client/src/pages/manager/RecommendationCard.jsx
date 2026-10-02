@@ -1,37 +1,46 @@
 import { useState } from 'react'
-import { ArrowRight, Check, Info, Lightbulb, MoveRight, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Info, Lightbulb, MoveRight, TriangleAlert } from 'lucide-react'
 import { managerApi } from '../../lib/managerApi'
 import { ResourceState } from './components'
 import { minutes } from './format'
 import { useManagerResource } from './useManagerResource'
 
 function ImpactRow({ label, before, after, emphasis = false }) {
+  const eta = (value) => value == null ? 'No counter open' : minutes(value)
   return (
     <div className={`impact-row${emphasis ? ' impact-target' : ''}`}>
       <div><span className="impact-label">{label}</span>{emphasis && <span className="target-label">Overloaded</span>}</div>
-      <span className="impact-before">{minutes(before.etaMin)}</span>
+      <span className="impact-before">{eta(before.etaMin)}</span>
       <ArrowRight size={15} aria-hidden="true" />
-      <strong>{minutes(after.etaMin)}</strong>
+      <strong>{eta(after.etaMin)}</strong>
     </div>
   )
 }
 
 export default function RecommendationCard() {
-  const { data: recommendation, error: loadError, loading, reload } = useManagerResource(managerApi.getRecommendation)
-  const [status, setStatus] = useState('ready')
+  const { data: recommendation, error: loadError, loading, reload } = useManagerResource(managerApi.getRecommendation, managerApi.subscribeRecommendation)
+  const [applying, setApplying] = useState(false)
+  const [feedback, setFeedback] = useState(null)
   const applyRecommendation = async () => {
-    setStatus('applying')
+    setApplying(true)
+    setFeedback(null)
     try {
       await managerApi.applyRecommendation({ id: recommendation.id })
-      setStatus('applied')
-    } catch {
-      setStatus('error')
+    } catch (error) {
+      if (error?.code === 'RECOMMENDATION_STALE') {
+        setFeedback('Queue conditions changed. Recommendation refreshed.')
+        await reload()
+      } else {
+        setFeedback(error?.message ?? 'Could not apply this recommendation.')
+      }
+    } finally {
+      setApplying(false)
     }
   }
 
   if (loading && !recommendation) return <section className="recommendation-card"><ResourceState loading title="Checking queue balance" message="Looking for the latest allocation opportunity." /></section>
   if (loadError) return <section className="recommendation-card"><ResourceState title="Recommendation unavailable" message="The current recommendation could not be loaded." action={reload} /></section>
-  if (!recommendation) return <section className="recommendation-card"><ResourceState title="Queues are balanced" message="There is no counter move to recommend right now." /></section>
+  if (!recommendation) return feedback ? <p className="recommendation-feedback" role="status">{feedback}</p> : null
 
   return (
     <section className="recommendation-card" aria-labelledby="recommendation-title">
@@ -61,11 +70,11 @@ export default function RecommendationCard() {
 
         <div className="recommendation-action">
           <div className="saved-minutes"><strong>{recommendation.savedCustomerMinutes}</strong><span>customer-minutes<br />saved</span></div>
-          <button className="primary-button" type="button" onClick={applyRecommendation} disabled={status === 'applying' || status === 'applied'}>
-            {status === 'applied' ? <><Check size={16} />Applied in preview</> : status === 'applying' ? 'Applying…' : 'Apply recommendation'}
+          <button className="primary-button" type="button" onClick={applyRecommendation} disabled={applying}>
+            {applying ? 'Applying…' : 'Apply recommendation'}
           </button>
-          <p className={`action-feedback${status === 'error' ? ' error' : ''}`} aria-live="polite">
-            {status === 'applied' ? 'Mock state updated. Live counters are unchanged.' : status === 'error' ? 'Could not apply this recommendation.' : 'Preview action only'}
+          <p className={`action-feedback${feedback ? ' error' : ''}`} aria-live="polite">
+            {feedback ?? 'Updates the live counter assignment'}
           </p>
         </div>
       </div>

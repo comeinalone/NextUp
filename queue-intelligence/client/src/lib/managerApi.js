@@ -1,13 +1,7 @@
-import {
-  analyticsTimeline,
-  analyticsToday,
-  managerOverview,
-  managerRecommendation,
-} from './mocks.js'
+import { analyticsTimeline, analyticsToday } from './mocks.js'
 import { io } from 'socket.io-client'
 
-// P3's single data boundary. Replace these mock implementations with fetch calls
-// to the matching /api endpoints when P1's server is ready.
+// P3's single data boundary. Analytics remains mock-backed until its backend is ready.
 const clone = (value) => structuredClone(value)
 
 export class ManagerApiError extends Error {
@@ -42,28 +36,55 @@ async function request(path, options = {}) {
 
 const realProvider = {
   getOverview: () => request('/api/manager/overview'),
+  getRecommendation: () => request('/api/manager/recommendation'),
+  applyRecommendation: ({ id }) => request('/api/manager/recommendation/apply', {
+    method: 'POST',
+    body: JSON.stringify({ id }),
+  }),
   assignCounter: ({ counterId, serviceId }) => request(`/api/counters/${counterId}/assign`, {
     method: 'POST',
     body: JSON.stringify({ serviceId }),
   }),
+  startSimulation: ({ speed }) => request('/api/sim/start', {
+    method: 'POST',
+    body: JSON.stringify({ speed }),
+  }),
+  stopSimulation: () => request('/api/sim/stop', { method: 'POST' }),
+  floodService: ({ serviceId, count }) => request('/api/sim/flood', {
+    method: 'POST',
+    body: JSON.stringify({ serviceId, count }),
+  }),
+  configureBots: ({ counterIds }) => request('/api/sim/bots', {
+    method: 'POST',
+    body: JSON.stringify({ counterIds }),
+  }),
+  configureArrivals: ({ perMin }) => request('/api/sim/arrivals', {
+    method: 'POST',
+    body: JSON.stringify({ perMin }),
+  }),
+  resetSimulation: () => request('/api/sim/reset', { method: 'POST' }),
 }
 
 const mockProvider = {
-  getRecommendation: async () => clone(managerRecommendation),
-  applyRecommendation: async ({ id }) => {
-    if (id !== managerRecommendation.id) throw new Error('Recommendation is no longer available.')
-    return clone(managerOverview)
-  },
-  startSimulation: async ({ speed }) => ({ running: true, speed }),
-  stopSimulation: async () => ({ running: false, speed: managerOverview.sim.speed }),
-  floodService: async ({ serviceId, count }) => ({ serviceId, count }),
-  resetSimulation: async () => clone(managerOverview.sim),
   getAnalyticsToday: async () => clone(analyticsToday),
   getAnalyticsTimeline: async () => clone(analyticsTimeline),
 }
 
 let managerSocket = null
+let currentOverview = null
 const overviewSubscribers = new Set()
+const recommendationSubscribers = new Set()
+
+function publishOverview(overview) {
+  currentOverview = overview
+  for (const subscriber of overviewSubscribers) subscriber(overview)
+  return overview
+}
+
+function publishRecommendation(recommendation) {
+  for (const subscriber of recommendationSubscribers) subscriber(recommendation)
+  return recommendation
+}
 
 function stopManagerSocket() {
   if (!managerSocket) return
@@ -77,9 +98,8 @@ function ensureManagerSocket() {
 
   const socket = io({ autoConnect: false })
   socket.on('connect', () => socket.emit('join', 'manager'))
-  socket.on('manager:overview', (overview) => {
-    for (const subscriber of overviewSubscribers) subscriber(overview)
-  })
+  socket.on('manager:overview', publishOverview)
+  socket.on('manager:recommendation', publishRecommendation)
   managerSocket = socket
   socket.connect()
   return socket
@@ -90,21 +110,41 @@ function subscribeOverview(subscriber) {
   ensureManagerSocket()
   return () => {
     overviewSubscribers.delete(subscriber)
-    if (overviewSubscribers.size === 0) stopManagerSocket()
+    if (overviewSubscribers.size === 0 && recommendationSubscribers.size === 0) stopManagerSocket()
   }
 }
 
+function subscribeRecommendation(subscriber) {
+  recommendationSubscribers.add(subscriber)
+  ensureManagerSocket()
+  return () => {
+    recommendationSubscribers.delete(subscriber)
+    if (overviewSubscribers.size === 0 && recommendationSubscribers.size === 0) stopManagerSocket()
+  }
+}
+
+async function publishOverviewResult(operation) {
+  return publishOverview(await operation)
+}
+
 export const managerApi = {
-  getOverview: () => realProvider.getOverview(),
-  getStaffOverview: () => realProvider.getOverview(),
-  assignCounter: (input) => realProvider.assignCounter(input),
+  getOverview: () => currentOverview ? Promise.resolve(currentOverview) : publishOverviewResult(realProvider.getOverview()),
+  getStaffOverview: () => currentOverview ? Promise.resolve(currentOverview) : publishOverviewResult(realProvider.getOverview()),
+  assignCounter: (input) => publishOverviewResult(realProvider.assignCounter(input)),
   subscribeOverview,
-  getRecommendation: () => mockProvider.getRecommendation(),
-  applyRecommendation: (input) => mockProvider.applyRecommendation(input),
-  startSimulation: (input) => mockProvider.startSimulation(input),
-  stopSimulation: () => mockProvider.stopSimulation(),
-  floodService: (input) => mockProvider.floodService(input),
-  resetSimulation: () => mockProvider.resetSimulation(),
+  getRecommendation: async () => publishRecommendation(await realProvider.getRecommendation()),
+  applyRecommendation: async (input) => {
+    const overview = await publishOverviewResult(realProvider.applyRecommendation(input))
+    publishRecommendation(null)
+    return overview
+  },
+  subscribeRecommendation,
+  startSimulation: (input) => publishOverviewResult(realProvider.startSimulation(input)),
+  stopSimulation: () => publishOverviewResult(realProvider.stopSimulation()),
+  floodService: (input) => publishOverviewResult(realProvider.floodService(input)),
+  configureBots: (input) => publishOverviewResult(realProvider.configureBots(input)),
+  configureArrivals: (input) => publishOverviewResult(realProvider.configureArrivals(input)),
+  resetSimulation: () => publishOverviewResult(realProvider.resetSimulation()),
   getAnalyticsToday: () => mockProvider.getAnalyticsToday(),
   getAnalyticsTimeline: () => mockProvider.getAnalyticsTimeline(),
 }

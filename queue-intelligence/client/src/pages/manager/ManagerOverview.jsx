@@ -80,7 +80,7 @@ export default function ManagerOverview() {
       </section>
       <div className="intelligence-grid">
         <RecommendationCard />
-        <SimulationControls services={services} initialSimulation={overview.sim} />
+        <SimulationControls />
       </div>
       <section className="panel service-panel" aria-labelledby="services-title">
         <div className="section-heading"><div><h2 id="services-title">Service queues</h2><p>Current load and estimated wait by service.</p></div><span className="count-label">{services.length} services</span></div>
@@ -93,7 +93,7 @@ export default function ManagerOverview() {
         {assignmentNotice && <div className="assignment-banner" role="status"><Info size={15} />{assignmentNotice}<button type="button" onClick={() => setAssignmentNotice(null)} aria-label="Dismiss assignment message">Dismiss</button></div>}
         <div className="counter-grid">{counters.map((counter) => <CounterCard key={`${counter.counterId}-${counter.serviceId}-${counter.pendingServiceId ?? 'none'}`} counter={counter} services={services} staff={staff} onAssigned={(updatedOverview, message) => { replaceData(updatedOverview); setAssignmentNotice(message) }} />)}</div>
       </section>
-      <div className="mock-notice"><Info size={17} /><span><strong>Live operations are connected.</strong> Recommendations, simulation controls, and analytics still use sample data.</span><ArrowRight size={18} /></div>
+      <div className="mock-notice"><Info size={17} /><span><strong>Live operations are connected.</strong> Queue controls and recommendations use the live server; analytics still uses sample data.</span><ArrowRight size={18} /></div>
     </>
   )
 }
