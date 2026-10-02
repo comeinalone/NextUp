@@ -1,36 +1,69 @@
 import { useState } from 'react'
 import { Users, Monitor, UserCheck, ArrowRight, Info, Layers } from 'lucide-react'
-import { managerApi } from '../../lib/managerApi'
+import { assignmentErrorMessage, managerApi } from '../../lib/managerApi'
 import { Metric, PageHeading, ResourceState, StatusBadge } from './components'
 import { serviceClass, minutes } from './format'
 import RecommendationCard from './RecommendationCard'
 import SimulationControls from './SimulationControls'
 import { useManagerResource } from './useManagerResource'
 
-function CounterCard({ counter, services, staff }) {
-  const [selectedId, setSelectedId] = useState(counter.pendingServiceId ?? counter.serviceId)
-  const selected = services.find((service) => service.serviceId === selectedId)
+function CounterCard({ counter, services, staff, onAssigned }) {
+  const [selectedId, setSelectedId] = useState('')
+  const [assigning, setAssigning] = useState(false)
+  const [error, setError] = useState(null)
   const service = services.find((item) => item.serviceId === counter.serviceId)
   const member = staff.find((person) => person.id === counter.staff?.id)
-  const changed = selectedId !== counter.serviceId
+  const destinations = services.filter((item) => item.serviceId !== counter.serviceId && member?.skills.includes(item.serviceId))
+  const pendingService = services.find((item) => item.serviceId === counter.pendingServiceId)
+  const switching = counter.state === 'SWITCHING' || counter.pendingServiceId !== null
+
+  const assign = async (event) => {
+    event.preventDefault()
+    if (!selectedId || assigning || switching) return
+    setAssigning(true)
+    setError(null)
+    try {
+      const updatedOverview = await managerApi.assignCounter({ counterId: counter.counterId, serviceId: Number(selectedId) })
+      const updatedCounter = updatedOverview.counters.find((item) => item.counterId === counter.counterId)
+      const destination = services.find((item) => item.serviceId === Number(selectedId))
+      onAssigned(updatedOverview, updatedCounter?.state === 'SWITCHING'
+        ? `${counter.name} will switch to ${destination?.name} after the current customer.`
+        : `${counter.name} is now assigned to ${destination?.name}.`)
+      setSelectedId('')
+    } catch (assignmentError) {
+      setError(assignmentErrorMessage(assignmentError))
+    } finally {
+      setAssigning(false)
+    }
+  }
+
   return (
     <article className="counter-card">
       <div className="counter-heading"><span className="counter-icon"><Monitor size={19} /></span><h3>{counter.name}</h3><StatusBadge state={counter.state} /></div>
       <div className={`counter-service ${serviceClass(service.serviceId)}`}><span className="service-dot" />{service.name}</div>
       <div className="counter-detail"><span>Assigned staff</span><strong>{counter.staff?.name ?? 'Unassigned'}</strong></div>
       <div className="current-token"><span>Current token</span><strong>{counter.currentCode ?? '—'}</strong><small>{counter.currentCode ? 'In service' : counter.state === 'OPEN' ? 'Ready for next customer' : 'Not serving'}</small></div>
-      {counter.pendingServiceId && <p className="pending-note">Switching to {services.find((item) => item.serviceId === counter.pendingServiceId)?.name} after the current token.</p>}
-      <label htmlFor={`assign-${counter.counterId}`}>Reassign service</label>
-      <select id={`assign-${counter.counterId}`} value={selectedId} onChange={(event) => setSelectedId(Number(event.target.value))} aria-describedby={`preview-${counter.counterId}`}>
-        {services.map((item) => <option key={item.serviceId} value={item.serviceId} disabled={member && !member.skills.includes(item.serviceId)}>{item.name}{member && !member.skills.includes(item.serviceId) ? ' · skill required' : ''}</option>)}
-      </select>
-      <p className={`assignment-note ${changed ? 'selected' : ''}`} id={`preview-${counter.counterId}`} aria-live="polite">{changed ? <>Preview: {selected.name}. No assignment saved. <button type="button" onClick={() => setSelectedId(counter.serviceId)}>Clear</button></> : 'Preview only · no changes are saved'}</p>
+      {switching && <p className="pending-note"><strong>Switch queued:</strong> {pendingService?.name ?? 'another service'} after the current customer is completed.</p>}
+      <form className="assignment-form" onSubmit={assign}>
+        <label htmlFor={`assign-${counter.counterId}`}>Reassign service</label>
+        <div className="assignment-control">
+          <select id={`assign-${counter.counterId}`} value={selectedId} onChange={(event) => { setSelectedId(event.target.value); setError(null) }} disabled={assigning || switching || destinations.length === 0} aria-describedby={`assignment-${counter.counterId}`}>
+            <option value="">{switching ? 'Switch already in progress' : destinations.length ? 'Choose destination…' : 'No other skilled services'}</option>
+            {destinations.map((item) => <option key={item.serviceId} value={item.serviceId}>{item.name}</option>)}
+          </select>
+          <button className="primary-button compact" type="submit" disabled={!selectedId || assigning || switching}>{assigning ? 'Assigning…' : 'Assign'}</button>
+        </div>
+        <p className={`assignment-note${error ? ' error' : ''}`} id={`assignment-${counter.counterId}`} aria-live="polite">
+          {error ?? (switching ? 'The current service remains active until the switch completes.' : member ? 'Destinations reflect this staff member’s skills.' : 'Assign staff before changing this service.')}
+        </p>
+      </form>
     </article>
   )
 }
 
 export default function ManagerOverview() {
-  const { data: overview, error, loading, reload } = useManagerResource(managerApi.getOverview)
+  const { data: overview, error, loading, reload, replaceData } = useManagerResource(managerApi.getOverview, managerApi.subscribeOverview)
+  const [assignmentNotice, setAssignmentNotice] = useState(null)
   if (loading && !overview) return <ResourceState loading title="Loading control room" message="Getting the latest manager snapshot." />
   if (error || !overview) return <ResourceState title="Control room unavailable" message="The manager overview could not be loaded." action={reload} />
 
@@ -39,7 +72,7 @@ export default function ManagerOverview() {
   const open = counters.filter((counter) => counter.state === 'OPEN').length
   return (
     <>
-      <PageHeading eyebrow="YOUR OPERATIONS, TOGETHER" title="Service overview" description="A clear view of your queues, counters, and people."><span className="snapshot-chip"><span />Sample snapshot</span></PageHeading>
+      <PageHeading eyebrow="YOUR OPERATIONS, TOGETHER" title="Service overview" description="A clear view of your queues, counters, and people."><span className="snapshot-chip"><span />Live snapshot</span></PageHeading>
       <section className="metrics" aria-label="Operations summary">
         <Metric icon={Users} label="Customers waiting" value={waiting} detail={`Across ${services.length} services`} />
         <Metric icon={Monitor} label="Open counters" value={<>{open}<small> / {counters.length}</small></>} detail={`${counters.length - open} counter on break`} />
@@ -54,12 +87,13 @@ export default function ManagerOverview() {
         <div className="table-scroll"><table className="service-table"><thead><tr><th scope="col">Service</th><th scope="col">Waiting</th><th scope="col">Open counters</th><th scope="col">Estimated wait</th><th scope="col">Health</th></tr></thead><tbody>
           {services.map((service) => <tr key={service.serviceId}><th scope="row"><div className="service-name"><span className={`service-symbol ${serviceClass(service.serviceId)}`}>{service.prefix}</span><div>{service.name}<small>{service.notice ?? 'Service queue'}</small></div></div></th><td className="numeric">{service.waiting}<span className="cell-unit">people</span></td><td className="numeric">{service.openCounters}</td><td className="numeric">{service.openCounters ? minutes(service.etaMin) : <span className="unavailable">Unavailable</span>}</td><td><StatusBadge state={service.health} /></td></tr>)}
         </tbody></table></div>
-        <div className="table-note"><Info size={14} />Estimates are sample values. A service needs an open counter to provide a wait estimate.</div>
+        <div className="table-note"><Info size={14} />Live estimates refresh with the manager overview. A service needs an open counter to provide a wait estimate.</div>
       </section>
       <section aria-labelledby="counters-title"><div className="section-heading counter-section-heading"><div><h2 id="counters-title">Counter floor</h2><p>Staff assignments and the customer at each counter.</p></div><span className="count-label"><Layers size={14} />{counters.length} counters</span></div>
-        <div className="counter-grid">{counters.map((counter) => <CounterCard key={`${counter.counterId}-${counter.serviceId}-${counter.pendingServiceId ?? 'none'}`} counter={counter} services={services} staff={staff} />)}</div>
+        {assignmentNotice && <div className="assignment-banner" role="status"><Info size={15} />{assignmentNotice}<button type="button" onClick={() => setAssignmentNotice(null)} aria-label="Dismiss assignment message">Dismiss</button></div>}
+        <div className="counter-grid">{counters.map((counter) => <CounterCard key={`${counter.counterId}-${counter.serviceId}-${counter.pendingServiceId ?? 'none'}`} counter={counter} services={services} staff={staff} onAssigned={(updatedOverview, message) => { replaceData(updatedOverview); setAssignmentNotice(message) }} />)}</div>
       </section>
-      <div className="mock-notice"><Info size={17} /><span><strong>A preview of your control room.</strong> Reassignment selections are local previews; counters and queue estimates stay unchanged.</span><ArrowRight size={18} /></div>
+      <div className="mock-notice"><Info size={17} /><span><strong>Live operations are connected.</strong> Recommendations, simulation controls, and analytics still use sample data.</span><ArrowRight size={18} /></div>
     </>
   )
 }

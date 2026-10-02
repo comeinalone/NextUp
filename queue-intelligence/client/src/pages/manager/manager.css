@@ -114,8 +114,15 @@
 .control-room select { display: block; width: 100%; min-height: 38px; padding: 8px; border: 1px solid #d9e2da; background: white; border-radius: 5px; color: var(--ink); font-size: 11px; cursor: pointer; }
 .control-room .assignment-note { font-size: 9px; color: #7c8980; margin-top: 8px; min-height: 28px; }
 .control-room .assignment-note.selected, .control-room .pending-note { color: #376c57; }
+.control-room .assignment-note.error { color: var(--color-health-critical); }
 .control-room .assignment-note button { border: 0; color: #285b48; background: none; text-decoration: underline; padding: 3px; cursor: pointer; }
-.control-room .pending-note { font-size: 11px; margin-top: 10px; }
+.control-room .pending-note { font-size: 10px; margin-top: 10px; padding: 9px 10px; border-radius: 6px; background: #fcf4e4; color: #765218; }
+.control-room .pending-note strong { font-weight: 650; }
+.control-room .assignment-control { display: flex; gap: 7px; }
+.control-room .assignment-control select { flex: 1; min-width: 0; }
+.control-room .assignment-control button { flex: 0 0 auto; }
+.control-room .assignment-banner { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #cfe2d4; border-radius: 7px; background: #edf6ef; color: #315f49; font-size: 10px; }
+.control-room .assignment-banner button { margin-left: auto; border: 0; padding: 3px; background: transparent; color: #285b48; font-size: 9px; text-decoration: underline; }
 .control-room .mock-notice { display: flex; align-items: center; gap: 11px; margin-top: 20px; border: 1px solid #dfe7df; border-radius: 7px; padding: 14px 17px; background: #eef3ed; color: #617165; font-size: 11px; }
 .control-room .mock-notice strong { font-weight: 600; color: #375340; }
 .control-room .mock-notice > svg:last-child { margin-left: auto; }
