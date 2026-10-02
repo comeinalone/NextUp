@@ -1,12 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
 import { todayAnalytics, timeline } from "../core/analytics.js";
+import { recentEvents } from "../core/events.js";
 
 export const analyticsRoutes = Router();
 
 const timelineQuery = z.object({
   minutes: z.coerce.number().int().min(10).max(720).optional(),
   step: z.coerce.number().int().min(1).max(60).optional(),
+});
+const eventsQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional(),
 });
 
 analyticsRoutes.get("/analytics/today", (req, res) => {
@@ -17,4 +21,10 @@ analyticsRoutes.get("/analytics/today", (req, res) => {
 analyticsRoutes.get("/analytics/timeline", (req, res) => {
   const { minutes, step } = timelineQuery.parse(req.query);
   res.json(timeline(minutes ?? 120, step ?? 5));
+});
+
+// The audit log: newest first, in plain English. Default 50, at most 200.
+analyticsRoutes.get("/events", (req, res) => {
+  const { limit } = eventsQuery.parse(req.query);
+  res.json(recentEvents(limit ?? 50));
 });
