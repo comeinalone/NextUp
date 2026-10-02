@@ -21,3 +21,51 @@ export const managerOverview = {
   openAssists: 0,
   sim: { running: false, speed: 1 },
 }
+
+// manager:recommendation snapshot. This object matches the socket/REST contract exactly.
+export const managerRecommendation = {
+  id: 'rec-17',
+  counterId: 5,
+  counterName: 'Counter 5',
+  fromServiceId: 3,
+  fromServiceName: 'Certificates',
+  toServiceId: 1,
+  toServiceName: 'Admissions',
+  before: {
+    from: { etaMin: 5, customerMinutes: 20 },
+    to: { etaMin: 29, customerMinutes: 410 },
+  },
+  after: {
+    from: { etaMin: 8, customerMinutes: 32 },
+    to: { etaMin: 18, customerMinutes: 255 },
+  },
+  savedCustomerMinutes: 143,
+  assumptions: 'Based on current queue, no new arrivals, average service times from today.',
+}
+
+// GET /analytics/today response.
+export const analyticsToday = {
+  issued: 96,
+  completed: 71,
+  waiting: 47,
+  noShows: 5,
+  avgWaitMin: 12.8,
+  avgServiceMin: 4.1,
+  perService: [
+    { serviceId: 1, serviceName: 'Admissions', completed: 28 },
+    { serviceId: 2, serviceName: 'Fee Payment', completed: 26 },
+    { serviceId: 3, serviceName: 'Certificates', completed: 17 },
+  ],
+}
+
+// GET /analytics/timeline response.
+export const analyticsTimeline = [
+  { time: '08:00', waiting: 6 },
+  { time: '08:30', waiting: 11 },
+  { time: '09:00', waiting: 18 },
+  { time: '09:30', waiting: 25 },
+  { time: '10:00', waiting: 39 },
+  { time: '10:30', waiting: 47 },
+  { time: '11:00', waiting: 42 },
+  { time: '11:30', waiting: 35 },
+]

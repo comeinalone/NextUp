@@ -17,6 +17,8 @@
 .control-room h1, .control-room h2, .control-room h3, .control-room p { margin: 0; color: inherit; font-family: inherit; }
 .control-room a { color: inherit; text-decoration: none; }
 .control-room button, .control-room select { font: inherit; }
+.control-room button { cursor: pointer; }
+.control-room button:disabled { cursor: not-allowed; opacity: .55; }
 .control-room svg { flex-shrink: 0; }
 .control-room :focus-visible { outline: 3px solid #348679; outline-offset: 4px; }
 .control-room .skip-link { position: fixed; top: -100px; left: 20px; padding: 12px 20px; background: white; z-index: 10; }
@@ -41,6 +43,7 @@
 .control-room .mock-label { border: 1px solid #dddccb; border-radius: 5px; padding: 4px 8px; background: #faf9f0; color: #76663b; white-space: nowrap; }
 .control-room main { max-width: 1500px; padding: 36px 38px 24px; margin: auto; outline: none; }
 .control-room .page-heading { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 27px; }
+.control-room .route-loading { min-height: 240px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--muted); font-size: 12px; }
 .control-room .eyebrow { color: #52796b; font-size: 10px; font-weight: 650; letter-spacing: 1.8px; margin-bottom: 9px; }
 .control-room h1 { font-size: clamp(26px, 3vw, 33px); font-weight: 600; letter-spacing: -1.2px; line-height: 1.2; }
 .control-room .page-description { font-size: 13px; color: var(--muted); margin-top: 10px; }
@@ -81,6 +84,8 @@
 .control-room .status-critical { color: var(--color-health-critical); background: #fceef0; }
 .control-room .status-busy, .control-room .status-break, .control-room .status-switching { color: var(--color-health-busy); background: #fcf4e4; }
 .control-room .status-serving { color: #4565a4; background: #edf2fc; }
+.control-room .status-running { color: var(--color-health-normal); background: #edf6ef; }
+.control-room .status-stopped { color: #647069; background: #edf0ed; }
 .control-room .table-note { border-top: 1px solid var(--line); padding: 12px 22px; color: #738178; font-size: 10px; display: flex; gap: 7px; align-items: center; }
 .control-room .counter-section-heading { padding: 28px 0 17px; }
 .control-room .counter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
@@ -111,9 +116,67 @@
 .control-room .skill-list { display: flex; flex-wrap: wrap; gap: 5px; max-width: 230px; }
 .control-room .skill { padding: 4px 7px; font-size: 9px; border-radius: 4px; }
 .control-room .staff-table td, .control-room .staff-table th { padding-inline: 18px; }
+.control-room .intelligence-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(320px, .8fr); gap: 16px; margin-bottom: 29px; align-items: stretch; }
+.control-room .recommendation-card { background: white; border: 1px solid #dbe5df; border-radius: 10px; overflow: hidden; }
+.control-room .recommendation-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 19px 22px; border-bottom: 1px solid var(--line); background: #fbfcfa; }
+.control-room .recommendation-heading { display: flex; align-items: center; gap: 12px; }
+.control-room .recommendation-heading .eyebrow { margin-bottom: 4px; font-size: 9px; }
+.control-room .recommendation-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; color: #285b48; background: #e8f3e9; }
+.control-room .recommendation-id { font: 500 10px/1.4 ui-monospace, monospace; color: #7c8981; }
+.control-room .recommendation-body { display: grid; grid-template-columns: minmax(190px, .9fr) minmax(250px, 1.15fr) minmax(150px, .65fr); }
+.control-room .recommendation-body > div { padding: 19px 21px; }
+.control-room .recommendation-body > div + div { border-left: 1px solid var(--line); }
+.control-room .target-service { display: flex; align-items: center; gap: 9px; color: var(--color-health-critical); background: #fceef0; border-radius: 6px; padding: 10px 11px; }
+.control-room .target-service span, .control-room .move-summary span { min-width: 0; }
+.control-room .target-service small, .control-room .move-summary small { display: block; font-size: 9px; font-weight: 500; color: #7a817c; margin-bottom: 2px; }
+.control-room .target-service strong, .control-room .move-summary strong { display: block; font-size: 11px; color: var(--ink); font-weight: 600; }
+.control-room .move-summary { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.control-room .move-summary > svg { color: #72877b; }
+.control-room .impact-head, .control-room .impact-row { display: grid; grid-template-columns: minmax(85px, 1fr) 48px 18px 48px; align-items: center; gap: 7px; }
+.control-room .impact-head { color: #7b8981; font-size: 8px; text-transform: uppercase; letter-spacing: .5px; padding-bottom: 8px; }
+.control-room .impact-row { min-height: 44px; border-top: 1px solid #edf0ec; font-size: 11px; }
+.control-room .impact-row > svg { color: #91a097; }
+.control-room .impact-label { display: block; font-weight: 500; }
+.control-room .target-label { display: inline-block; color: var(--color-health-critical); font-size: 8px; margin-top: 2px; }
+.control-room .impact-before { color: #7b8880; text-decoration: line-through; }
+.control-room .impact-row strong { color: #187652; font-weight: 650; }
+.control-room .recommendation-action { display: flex; flex-direction: column; justify-content: center; }
+.control-room .saved-minutes { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
+.control-room .saved-minutes strong { font-size: 32px; letter-spacing: -1px; line-height: 1; color: #187652; font-variant-numeric: tabular-nums; }
+.control-room .saved-minutes span { font-size: 9px; line-height: 1.35; color: #657572; }
+.control-room .primary-button, .control-room .secondary-button { border-radius: 6px; min-height: 38px; padding: 9px 13px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; font-size: 11px; font-weight: 600; }
+.control-room .primary-button { border: 1px solid #102d2a; color: #f0f7f3; background: #102d2a; }
+.control-room .primary-button:hover:not(:disabled) { background: #1b3b35; }
+.control-room .secondary-button { border: 1px solid #d9e2da; color: #29433b; background: #fff; }
+.control-room .secondary-button:hover:not(:disabled) { background: #f3f7f3; border-color: #b9c9bf; }
+.control-room .primary-button.compact, .control-room .secondary-button.compact { min-height: 36px; padding: 8px 11px; }
+.control-room .action-feedback { min-height: 14px; color: #728078; font-size: 8px; margin-top: 7px; text-align: center; }
+.control-room .action-feedback.error { color: var(--color-health-critical); }
+.control-room .assumptions { display: flex; align-items: center; gap: 8px; padding: 11px 22px; border-top: 1px solid var(--line); color: #728078; font-size: 9px; background: #f9faf8; }
+.control-room .assumptions strong { color: #4e6359; }
+.control-room .simulation-panel { display: flex; flex-direction: column; }
+.control-room .simulation-panel .section-heading { border-bottom: 1px solid var(--line); }
+.control-room .simulation-controls { padding: 7px 21px 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 14px; }
+.control-room .simulation-group { min-width: 0; }
+.control-room .simulation-group label, .control-room .control-label { display: block; font-size: 9px; margin: 11px 0 6px; color: #63756a; }
+.control-room .button-row, .control-room .inline-control { display: flex; gap: 7px; }
+.control-room .button-row > *, .control-room .inline-control > select { flex: 1; min-width: 0; }
+.control-room .inline-control .secondary-button { white-space: nowrap; }
+.control-room .text-button { border: 0; color: #285b48; background: transparent; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 0; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; }
+.control-room .simulation-message { margin-top: auto; border-top: 1px solid var(--line); padding: 11px 21px; color: #617165; background: #f9faf8; font-size: 9px; }
+.control-room .analytics-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 29px; }
+.control-room .analytics-metrics .metric { padding: 17px 18px; }
+.control-room .analytics-metrics .metric-value { font-size: 29px; }
+.control-room .chart-panel { margin-bottom: 24px; }
+.control-room .chart-wrap { height: 360px; padding: 8px 20px 24px; border-top: 1px solid var(--line); }
+.control-room .chart-tooltip { min-width: 94px; padding: 9px 11px; border: 1px solid #dbe5df; border-radius: 6px; background: white; box-shadow: 0 8px 24px rgba(16, 45, 42, .08); }
+.control-room .chart-tooltip span, .control-room .chart-tooltip strong { display: block; }
+.control-room .chart-tooltip span { color: #718078; font-size: 9px; }
+.control-room .chart-tooltip strong { margin-top: 2px; font-size: 11px; }
+.control-room .table-note code { font: inherit; color: #53675d; background: transparent; padding: 0; }
 .control-room footer { max-width: 1500px; margin: auto; padding: 0 38px 24px; display: flex; align-items: center; gap: 10px; font-size: 10px; color: #8a958d; }
 .control-room footer > span:last-child { margin-left: auto; }
 @media (min-width: 1600px) { .control-room main { padding-top: 46px; } .control-room .counter-card { padding: 23px; } }
-@media (max-width: 1200px) { .control-room .sidebar { width: 195px; padding-inline: 14px; } .control-room main { padding: 28px 24px; } .control-room .topbar { padding-inline: 24px; } .control-room .counter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .control-room .counter-card { padding: 20px; } }
-@media (max-width: 760px) { .control-room { display: block; } .control-room .sidebar { position: static; width: 100%; height: auto; padding: 17px 20px 13px; } .control-room .brand { font-size: 23px; padding: 0; } .control-room .brand-mark { width: 28px; height: 28px; } .control-room .workspace-label, .control-room .sidebar-bottom { display: none; } .control-room nav { display: flex; margin-top: 16px; gap: 10px; } .control-room nav a { padding: 9px 12px; font-size: 12px; } .control-room .topbar { height: 52px; padding-inline: 20px; } .control-room main { padding: 25px 20px; } .control-room .snapshot-chip { display: none; } .control-room .metrics { gap: 9px; } .control-room .metric { padding: 14px 12px; } .control-room .metric-label { font-size: 10px; } .control-room .metric-label svg { display: none; } .control-room .metric-value { font-size: 29px; } .control-room .metric p { font-size: 9px; } .control-room .section-heading { padding: 18px; } .control-room .counter-section-heading { padding: 25px 0 15px; } .control-room footer { padding-inline: 20px; } .control-room footer > span:first-child { display: none; } }
-@media (max-width: 430px) { .control-room .breadcrumb { display: none; } .control-room main { padding-inline: 14px; } .control-room .counter-grid { grid-template-columns: 1fr; } .control-room .metrics { grid-template-columns: 1fr; } .control-room .metric { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 10px; } .control-room .metric-label { font-size: 12px; } .control-room .metric-value { grid-column: 2; grid-row: 1 / 3; margin: 0; } .control-room .metric p { font-size: 10px; } .control-room .mock-notice > svg:last-child { display: none; } }
+@media (max-width: 1200px) { .control-room .sidebar { width: 195px; padding-inline: 14px; } .control-room main { padding: 28px 24px; } .control-room .topbar { padding-inline: 24px; } .control-room .counter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .control-room .counter-card { padding: 20px; } .control-room .intelligence-grid { grid-template-columns: 1fr; } .control-room .analytics-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .control-room { display: block; } .control-room .sidebar { position: static; width: 100%; height: auto; padding: 17px 20px 13px; } .control-room .brand { font-size: 23px; padding: 0; } .control-room .brand-mark { width: 28px; height: 28px; } .control-room .workspace-label, .control-room .sidebar-bottom { display: none; } .control-room nav { display: flex; margin-top: 16px; gap: 10px; overflow-x: auto; } .control-room nav a { padding: 9px 12px; font-size: 12px; white-space: nowrap; } .control-room .topbar { height: 52px; padding-inline: 20px; } .control-room main { padding: 25px 20px; } .control-room .snapshot-chip { display: none; } .control-room .metrics { gap: 9px; } .control-room .metric { padding: 14px 12px; } .control-room .metric-label { font-size: 10px; } .control-room .metric-label svg { display: none; } .control-room .metric-value { font-size: 29px; } .control-room .metric p { font-size: 9px; } .control-room .section-heading { padding: 18px; } .control-room .counter-section-heading { padding: 25px 0 15px; } .control-room .recommendation-body { grid-template-columns: 1fr 1fr; } .control-room .recommendation-action { grid-column: 1 / -1; border-left: 0 !important; border-top: 1px solid var(--line); flex-direction: row; align-items: center; gap: 14px; flex-wrap: wrap; } .control-room .saved-minutes { margin: 0 auto 0 0; } .control-room .action-feedback { flex-basis: 100%; text-align: left; } .control-room .analytics-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .control-room footer { padding-inline: 20px; } .control-room footer > span:first-child { display: none; } }
+@media (max-width: 430px) { .control-room .breadcrumb { display: none; } .control-room main { padding-inline: 14px; } .control-room .counter-grid { grid-template-columns: 1fr; } .control-room .metrics, .control-room .analytics-metrics { grid-template-columns: 1fr; } .control-room .metric { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 10px; } .control-room .metric-label { font-size: 12px; } .control-room .metric-value { grid-column: 2; grid-row: 1 / 3; margin: 0; } .control-room .metric p { font-size: 10px; } .control-room .mock-notice > svg:last-child { display: none; } .control-room .recommendation-body { grid-template-columns: 1fr; } .control-room .recommendation-body > div + div { border-left: 0; border-top: 1px solid var(--line); } .control-room .recommendation-action { grid-column: auto; } .control-room .simulation-controls { grid-template-columns: 1fr; } .control-room .chart-wrap { height: 290px; padding-inline: 8px; } }

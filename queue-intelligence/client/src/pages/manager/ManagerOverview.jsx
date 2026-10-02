@@ -3,6 +3,8 @@ import { Users, Monitor, UserCheck, ArrowRight, Info, Layers } from 'lucide-reac
 import { managerOverview } from '../../lib/mocks'
 import { Metric, PageHeading, StatusBadge } from './components'
 import { serviceClass, minutes } from './format'
+import RecommendationCard from './RecommendationCard'
+import SimulationControls from './SimulationControls'
 
 function CounterCard({ counter, services, staff }) {
   const [selectedId, setSelectedId] = useState(counter.pendingServiceId ?? counter.serviceId)
@@ -38,6 +40,10 @@ export default function ManagerOverview() {
         <Metric icon={Monitor} label="Open counters" value={<>{open}<small> / {counters.length}</small></>} detail={`${counters.length - open} counter on break`} />
         <Metric icon={UserCheck} label="Staff available" value={staff.filter((person) => person.state === 'AVAILABLE').length} detail={`${staff.filter((person) => person.state === 'SERVING').length} currently serving`} />
       </section>
+      <div className="intelligence-grid">
+        <RecommendationCard />
+        <SimulationControls />
+      </div>
       <section className="panel service-panel" aria-labelledby="services-title">
         <div className="section-heading"><div><h2 id="services-title">Service queues</h2><p>Current load and estimated wait by service.</p></div><span className="count-label">{services.length} services</span></div>
         <div className="table-scroll"><table className="service-table"><thead><tr><th scope="col">Service</th><th scope="col">Waiting</th><th scope="col">Open counters</th><th scope="col">Estimated wait</th><th scope="col">Health</th></tr></thead><tbody>
