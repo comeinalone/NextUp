@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { ServiceError } from "./core/errors.js";
 import { customerRoutes } from "./routes/customer.js";
+import { counterRoutes } from "./routes/counter.js";
 
 function errorHandler(err, req, res, _next) {
   if (err instanceof ServiceError) {
@@ -26,6 +27,7 @@ export function createApp() {
 
   app.get("/api/health", (req, res) => res.json({ ok: true }));
   app.use("/api", customerRoutes);
+  app.use("/api", counterRoutes);
 
   app.use("/api", (req, res) =>
     res.status(404).json({ error: { code: "NOT_FOUND", message: "Unknown endpoint" } })
