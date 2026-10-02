@@ -156,6 +156,9 @@ States: `OPEN | ACCEPTED | RESOLVED`.
 ## REST endpoints
 
 Base path `/api`. Request bodies are JSON.
+| GET | `/analytics/today` | | `{ issued, completed, waiting, noShows, avgWaitMin, avgServiceMin, perService: [{ serviceId, name, issued, completed, waiting, noShows, avgWaitMin, avgServiceMin }] }` (averages are null with no data) |
+| GET | `/analytics/timeline` | `?minutes=120&step=5` (both optional) | `[{ time, waiting }]` oldest first, last point is now |
+
 
 ### Customer
 | Method | Path | Body | Returns |
