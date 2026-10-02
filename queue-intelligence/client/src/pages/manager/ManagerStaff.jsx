@@ -1,10 +1,15 @@
+import { managerApi } from '../../lib/managerApi'
 import { Users, UserCheck, Coffee } from 'lucide-react'
-import { managerOverview } from '../../lib/mocks'
-import { Metric, PageHeading, StatusBadge } from './components'
+import { Metric, PageHeading, ResourceState, StatusBadge } from './components'
 import { serviceClass, minutes } from './format'
+import { useManagerResource } from './useManagerResource'
 
 export default function ManagerStaff() {
-  const { staff, services, counters } = managerOverview
+  const { data: overview, error, loading, reload } = useManagerResource(managerApi.getStaffOverview)
+  if (loading && !overview) return <ResourceState loading title="Loading staff" message="Getting the current team snapshot." />
+  if (error || !overview) return <ResourceState title="Staff unavailable" message="The staff overview could not be loaded." action={reload} />
+
+  const { staff, services, counters } = overview
   return <>
     <PageHeading eyebrow="THE PEOPLE BEHIND THE QUEUE" title="Staff directory" description="Service skills, counter assignments, and today's workload." />
     <section className="metrics" aria-label="Staff summary">

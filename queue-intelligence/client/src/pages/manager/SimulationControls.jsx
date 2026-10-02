@@ -1,37 +1,73 @@
 import { useState } from 'react'
 import { Play, RotateCcw, Square, Waves } from 'lucide-react'
-import { managerOverview } from '../../lib/mocks'
 import { managerApi } from '../../lib/managerApi'
 import { StatusBadge } from './components'
 
-export default function SimulationControls() {
-  const [simulation, setSimulation] = useState(managerOverview.sim)
-  const [speed, setSpeed] = useState(managerOverview.sim.speed)
-  const [serviceId, setServiceId] = useState(managerOverview.services[0].serviceId)
+export default function SimulationControls({ services, initialSimulation }) {
+  const [simulation, setSimulation] = useState(initialSimulation)
+  const [speed, setSpeed] = useState(initialSimulation.speed)
+  const [serviceId, setServiceId] = useState(services[0]?.serviceId ?? '')
   const [message, setMessage] = useState('Ready for a mock demo run.')
-  const services = managerOverview.services
+  const [pendingAction, setPendingAction] = useState(null)
+  const [hasError, setHasError] = useState(false)
 
   const start = async () => {
-    const next = await managerApi.startSimulation({ speed })
-    setSimulation(next)
-    setMessage(`Simulation started at ${speed}× speed.`)
+    setPendingAction('start')
+    setHasError(false)
+    try {
+      const next = await managerApi.startSimulation({ speed })
+      setSimulation(next)
+      setMessage(`Simulation started at ${speed}× speed.`)
+    } catch {
+      setHasError(true)
+      setMessage('The simulation could not be started.')
+    } finally {
+      setPendingAction(null)
+    }
   }
   const stop = async () => {
-    const next = await managerApi.stopSimulation()
-    setSimulation({ ...next, speed })
-    setMessage('Simulation stopped. Mock queue data is unchanged.')
+    setPendingAction('stop')
+    setHasError(false)
+    try {
+      const next = await managerApi.stopSimulation()
+      setSimulation({ ...next, speed })
+      setMessage('Simulation stopped. Mock queue data is unchanged.')
+    } catch {
+      setHasError(true)
+      setMessage('The simulation could not be stopped.')
+    } finally {
+      setPendingAction(null)
+    }
   }
   const flood = async () => {
-    const result = await managerApi.floodService({ serviceId, count: 10 })
-    const service = services.find((item) => item.serviceId === result.serviceId)
-    setMessage(`Added a mock burst of ${result.count} arrivals to ${service.name}.`)
+    setPendingAction('flood')
+    setHasError(false)
+    try {
+      const result = await managerApi.floodService({ serviceId, count: 10 })
+      const service = services.find((item) => item.serviceId === result.serviceId)
+      setMessage(`Added a mock burst of ${result.count} arrivals to ${service?.name ?? 'the selected service'}.`)
+    } catch {
+      setHasError(true)
+      setMessage('The service flood could not be applied.')
+    } finally {
+      setPendingAction(null)
+    }
   }
   const reset = async () => {
-    const next = await managerApi.resetSimulation()
-    setSimulation(next)
-    setSpeed(next.speed)
-    setServiceId(services[0].serviceId)
-    setMessage('Simulation controls reset to their initial mock state.')
+    setPendingAction('reset')
+    setHasError(false)
+    try {
+      const next = await managerApi.resetSimulation()
+      setSimulation(next)
+      setSpeed(next.speed)
+      setServiceId(services[0]?.serviceId ?? '')
+      setMessage('Simulation controls reset to their initial mock state.')
+    } catch {
+      setHasError(true)
+      setMessage('The simulation could not be reset.')
+    } finally {
+      setPendingAction(null)
+    }
   }
 
   return (
@@ -44,8 +80,8 @@ export default function SimulationControls() {
         <div className="simulation-group">
           <span className="control-label">Run state</span>
           <div className="button-row">
-            <button className="primary-button compact" type="button" onClick={start} disabled={simulation.running}><Play size={14} />Start</button>
-            <button className="secondary-button compact" type="button" onClick={stop} disabled={!simulation.running}><Square size={13} />Stop</button>
+            <button className="primary-button compact" type="button" onClick={start} disabled={simulation.running || pendingAction !== null}><Play size={14} />{pendingAction === 'start' ? 'Starting…' : 'Start'}</button>
+            <button className="secondary-button compact" type="button" onClick={stop} disabled={!simulation.running || pendingAction !== null}><Square size={13} />{pendingAction === 'stop' ? 'Stopping…' : 'Stop'}</button>
           </div>
         </div>
         <div className="simulation-group">
@@ -60,15 +96,15 @@ export default function SimulationControls() {
             <select id="flood-service" value={serviceId} onChange={(event) => setServiceId(Number(event.target.value))}>
               {services.map((service) => <option key={service.serviceId} value={service.serviceId}>{service.name}</option>)}
             </select>
-            <button className="secondary-button compact" type="button" onClick={flood}><Waves size={14} />Add 10</button>
+            <button className="secondary-button compact" type="button" onClick={flood} disabled={pendingAction !== null || !serviceId}><Waves size={14} />{pendingAction === 'flood' ? 'Adding…' : 'Add 10'}</button>
           </div>
         </div>
         <div className="simulation-group reset-group">
           <span className="control-label">Reset demo</span>
-          <button className="text-button" type="button" onClick={reset}><RotateCcw size={14} />Reset simulation</button>
+          <button className="text-button" type="button" onClick={reset} disabled={pendingAction !== null}><RotateCcw size={14} />{pendingAction === 'reset' ? 'Resetting…' : 'Reset simulation'}</button>
         </div>
       </div>
-      <p className="simulation-message" aria-live="polite">{message}</p>
+      <p className={`simulation-message${hasError ? ' error' : ''}`} aria-live="polite">{message}</p>
     </section>
   )
 }

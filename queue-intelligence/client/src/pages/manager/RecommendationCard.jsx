@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { ArrowRight, Check, Info, Lightbulb, MoveRight, TriangleAlert } from 'lucide-react'
-import { managerRecommendation } from '../../lib/mocks'
 import { managerApi } from '../../lib/managerApi'
+import { ResourceState } from './components'
 import { minutes } from './format'
+import { useManagerResource } from './useManagerResource'
 
 function ImpactRow({ label, before, after, emphasis = false }) {
   return (
@@ -16,7 +17,7 @@ function ImpactRow({ label, before, after, emphasis = false }) {
 }
 
 export default function RecommendationCard() {
-  const recommendation = managerRecommendation
+  const { data: recommendation, error: loadError, loading, reload } = useManagerResource(managerApi.getRecommendation)
   const [status, setStatus] = useState('ready')
   const applyRecommendation = async () => {
     setStatus('applying')
@@ -27,6 +28,10 @@ export default function RecommendationCard() {
       setStatus('error')
     }
   }
+
+  if (loading && !recommendation) return <section className="recommendation-card"><ResourceState loading title="Checking queue balance" message="Looking for the latest allocation opportunity." /></section>
+  if (loadError) return <section className="recommendation-card"><ResourceState title="Recommendation unavailable" message="The current recommendation could not be loaded." action={reload} /></section>
+  if (!recommendation) return <section className="recommendation-card"><ResourceState title="Queues are balanced" message="There is no counter move to recommend right now." /></section>
 
   return (
     <section className="recommendation-card" aria-labelledby="recommendation-title">

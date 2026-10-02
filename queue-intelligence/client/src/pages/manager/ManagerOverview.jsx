@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Users, Monitor, UserCheck, ArrowRight, Info, Layers } from 'lucide-react'
-import { managerOverview } from '../../lib/mocks'
-import { Metric, PageHeading, StatusBadge } from './components'
+import { managerApi } from '../../lib/managerApi'
+import { Metric, PageHeading, ResourceState, StatusBadge } from './components'
 import { serviceClass, minutes } from './format'
 import RecommendationCard from './RecommendationCard'
 import SimulationControls from './SimulationControls'
+import { useManagerResource } from './useManagerResource'
 
 function CounterCard({ counter, services, staff }) {
   const [selectedId, setSelectedId] = useState(counter.pendingServiceId ?? counter.serviceId)
@@ -29,7 +30,11 @@ function CounterCard({ counter, services, staff }) {
 }
 
 export default function ManagerOverview() {
-  const { services, counters, staff } = managerOverview
+  const { data: overview, error, loading, reload } = useManagerResource(managerApi.getOverview)
+  if (loading && !overview) return <ResourceState loading title="Loading control room" message="Getting the latest manager snapshot." />
+  if (error || !overview) return <ResourceState title="Control room unavailable" message="The manager overview could not be loaded." action={reload} />
+
+  const { services, counters, staff } = overview
   const waiting = services.reduce((sum, service) => sum + service.waiting, 0)
   const open = counters.filter((counter) => counter.state === 'OPEN').length
   return (
@@ -42,7 +47,7 @@ export default function ManagerOverview() {
       </section>
       <div className="intelligence-grid">
         <RecommendationCard />
-        <SimulationControls />
+        <SimulationControls services={services} initialSimulation={overview.sim} />
       </div>
       <section className="panel service-panel" aria-labelledby="services-title">
         <div className="section-heading"><div><h2 id="services-title">Service queues</h2><p>Current load and estimated wait by service.</p></div><span className="count-label">{services.length} services</span></div>
@@ -52,7 +57,7 @@ export default function ManagerOverview() {
         <div className="table-note"><Info size={14} />Estimates are sample values. A service needs an open counter to provide a wait estimate.</div>
       </section>
       <section aria-labelledby="counters-title"><div className="section-heading counter-section-heading"><div><h2 id="counters-title">Counter floor</h2><p>Staff assignments and the customer at each counter.</p></div><span className="count-label"><Layers size={14} />{counters.length} counters</span></div>
-        <div className="counter-grid">{counters.map((counter) => <CounterCard key={counter.counterId} counter={counter} services={services} staff={staff} />)}</div>
+        <div className="counter-grid">{counters.map((counter) => <CounterCard key={`${counter.counterId}-${counter.serviceId}-${counter.pendingServiceId ?? 'none'}`} counter={counter} services={services} staff={staff} />)}</div>
       </section>
       <div className="mock-notice"><Info size={17} /><span><strong>A preview of your control room.</strong> Reassignment selections are local previews; counters and queue estimates stay unchanged.</span><ArrowRight size={18} /></div>
     </>
