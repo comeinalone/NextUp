@@ -10,21 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-<<<<<<< HEAD
-=======
     "@tailwindcss/vite": "^4.3.3",
->>>>>>> origin/control
     "lucide-react": "^1.49.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",
-<<<<<<< HEAD
-    "socket.io-client": "^4.8.4"
-=======
     "recharts": "^3.10.1",
     "socket.io-client": "^4.8.4",
     "tailwindcss": "^4.3.3"
->>>>>>> origin/control
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
@@ -33,7 +26,6 @@
     "autoprefixer": "^10.6.1",
     "oxlint": "^1.81.0",
     "postcss": "^8.5.28",
-    "tailwindcss": "^3.4.19",
     "vite": "^8.3.0"
   }
 }
