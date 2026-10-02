@@ -22,10 +22,12 @@ export default function RecommendationCard() {
   const [applying, setApplying] = useState(false)
   const [feedback, setFeedback] = useState(null)
   const applyRecommendation = async () => {
+    const scrollPosition = { left: window.scrollX, top: window.scrollY }
     setApplying(true)
     setFeedback(null)
     try {
       await managerApi.applyRecommendation({ id: recommendation.id })
+      window.requestAnimationFrame(() => window.scrollTo({ ...scrollPosition, behavior: 'instant' }))
     } catch (error) {
       if (error?.code === 'RECOMMENDATION_STALE') {
         const refreshed = await reload()
