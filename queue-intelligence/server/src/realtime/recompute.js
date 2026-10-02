@@ -1,6 +1,6 @@
 import { db } from "../db/db.js";
 import { config } from "../config.js";
-import { emitToken, emitService, emitCounter } from "./broadcaster.js";
+import { emitToken, emitService, emitCounter, emitManager } from "./broadcaster.js";
 
 // Call this after every change. Tell it what changed and it pushes fresh
 // snapshots to everyone affected.
@@ -31,6 +31,7 @@ export function refresh({ services = [], counters = [], tokens = [] } = {}) {
   for (const sid of serviceIds) emitService(sid);
   for (const cid of counterIds) emitCounter(cid);
   for (const code of codes) emitToken(code);
+  emitManager(); // the dashboard sees every change
 }
 
 // Refresh everything that is live.

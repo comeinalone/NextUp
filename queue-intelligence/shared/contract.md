@@ -107,7 +107,7 @@ must match these shapes exactly.
       "skills": [1, 2, 3], "servedToday": 12, "avgHandlingMin": 4.1 }
   ],
   "openAssists": 1,
-  "sim": { "running": true, "speed": 5 }
+  "sim": { "running": true, "speed": 5, "bots": [1, 2], "arrivalsPerMin": 4 }
 }
 ```
 
@@ -140,7 +140,9 @@ Payload is `null` when there is no recommendation.
 {
   "id": 4, "counterId": 3, "counterName": "Counter 3", "tokenCode": "A-037",
   "reason": "DOCUMENT_ISSUE", "note": "", "state": "OPEN",
-  "createdAt": "2026-10-02T10:14:00.000Z", "acceptedBy": null
+  "createdAt": "2026-10-02T10:14:00.000Z",
+  "acceptedBy": null,
+  "eligibleCounterIds": [1, 2]
 }
 ```
 Reasons: `DOCUMENT_ISSUE | SYSTEM_PROBLEM | OVERLOADED | DIFFICULT_CASE | OTHER`.
@@ -156,6 +158,13 @@ States: `OPEN | ACCEPTED | RESOLVED`.
 ## REST endpoints
 
 Base path `/api`. Request bodies are JSON.
+| GET | `/analytics/today` | | `{ issued, completed, waiting, noShows, avgWaitMin, avgServiceMin, perService: [{ serviceId, name, issued, completed, waiting, noShows, avgWaitMin, avgServiceMin }] }` (averages are null with no data) |
+| GET | `/analytics/timeline` | `?minutes=120&step=5` (both optional) | `[{ time, waiting }]` oldest first, last point is now |
+| GET | `/assist` | | unresolved requests, oldest first |
+| POST | `/assist` | `{ counterId, reason, note?, tokenCode? }` | assist shape (201) |
+| POST | `/assist/:id/accept` | `{ counterId }` (the helping counter) | assist shape |
+| POST | `/assist/:id/resolve` | | assist shape |
+
 
 ### Customer
 | Method | Path | Body | Returns |
@@ -202,6 +211,8 @@ Base path `/api`. Request bodies are JSON.
 | POST | `/sim/flood` | `{ serviceId, count }` |
 | POST | `/sim/seed` | |
 | POST | `/sim/reset` | |
+| POST | `/sim/bots` | `{ counterIds: [1, 2] }` |
+| POST | `/sim/arrivals` | `{ perMin: 4 }` |
 
 ---
 

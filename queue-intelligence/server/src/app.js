@@ -3,6 +3,10 @@ import cors from "cors";
 import { ServiceError } from "./core/errors.js";
 import { customerRoutes } from "./routes/customer.js";
 import { counterRoutes } from "./routes/counter.js";
+import { managerRoutes } from "./routes/manager.js";
+import { simRoutes } from "./routes/sim.js";
+import { analyticsRoutes } from "./routes/analytics.js";
+import { assistRoutes } from "./routes/assist.js";
 
 function errorHandler(err, req, res, _next) {
   if (err instanceof ServiceError) {
@@ -28,6 +32,10 @@ export function createApp() {
   app.get("/api/health", (req, res) => res.json({ ok: true }));
   app.use("/api", customerRoutes);
   app.use("/api", counterRoutes);
+  app.use("/api", managerRoutes);
+  app.use("/api", simRoutes);
+  app.use("/api", analyticsRoutes);
+  app.use("/api", assistRoutes);
 
   app.use("/api", (req, res) =>
     res.status(404).json({ error: { code: "NOT_FOUND", message: "Unknown endpoint" } })
