@@ -9,9 +9,9 @@ export const assistRoutes = Router();
 const idParam = z.coerce.number().int().positive();
 const createBody = z.object({
   counterId: z.coerce.number().int().positive(),
-  tokenCode: z.string().min(1).max(20).optional(),
+  tokenCode: z.string().min(1).max(20).nullish(),
   reason: z.enum(assist.REASONS),
-  note: z.string().max(200).optional(),
+  note: z.string().max(200).nullish(),
 });
 const acceptBody = z.object({ counterId: z.coerce.number().int().positive() });
 
