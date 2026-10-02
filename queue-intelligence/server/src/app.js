@@ -4,6 +4,7 @@ import { ServiceError } from "./core/errors.js";
 import { customerRoutes } from "./routes/customer.js";
 import { counterRoutes } from "./routes/counter.js";
 import { managerRoutes } from "./routes/manager.js";
+import { simRoutes } from "./routes/sim.js";
 
 function errorHandler(err, req, res, _next) {
   if (err instanceof ServiceError) {
@@ -30,6 +31,7 @@ export function createApp() {
   app.use("/api", customerRoutes);
   app.use("/api", counterRoutes);
   app.use("/api", managerRoutes);
+  app.use("/api", simRoutes);
 
   app.use("/api", (req, res) =>
     res.status(404).json({ error: { code: "NOT_FOUND", message: "Unknown endpoint" } })
