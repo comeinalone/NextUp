@@ -3,6 +3,7 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { initSchema } from "./db/db.js";
+import { initBroadcaster } from "./realtime/broadcaster.js";
 
 initSchema();
 
@@ -14,9 +15,6 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: { origin: "*" } });
-
-io.on("connection", (socket) => {
-  socket.on("join", (room) => socket.join(room));
-});
+initBroadcaster(io);
 
 httpServer.listen(4000, "0.0.0.0", () => console.log("Server on :4000"));
